@@ -1,0 +1,1489 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with declarations for the µTest++ test reporter.
+ *
+ * @details
+ * This header provides the declarations for the test reporting facilities used
+ * within the µTest++ framework. It defines the `endl` and `indent()`
+ * stream manipulators, and the abstract `reporter` base class, which
+ * accumulates output in a buffer, writes it to the console and to an
+ * optional output file, and dispatches the pass/fail
+ * results and the session, suite, and test case events to the concrete
+ * reporters (`reporter_human` and `reporter_tap`).
+ *
+ * The formatting of the values and the comparison expressions is delegated
+ * to `detail::expression_formatter`.
+ *
+ * The `verbosity` levels, and the other session options, are defined in
+ * `runner-options.h`. The manipulators and the reporter are defined in the
+ * `micro_os_plus::micro_test_plus::detail` namespace, since the reporters
+ * are internal to the framework.
+ *
+ * This file is included by `micro-os-plus/micro-test-plus.h`, which is the
+ * header that the applications include.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_REPORTER_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_REPORTER_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if __has_include("micro-os-plus/project-config.h")
+#include "micro-os-plus/project-config.h"
+#endif // __has_include("micro-os-plus/project-config.h")
+
+#if __has_include("micro-os-plus/micro-test-plus-defines.h")
+#include "micro-os-plus/micro-test-plus-defines.h"
+#endif // __has_include("micro-os-plus/micro-test-plus-defines.h")
+
+#include "check-result.h"
+#include "detail.h"
+#include "expression-formatter.h"
+#include "extension.h"
+#include "reflection.h"
+#include "runner-options.h"
+
+#include <cstdint>
+#include <cstdio>
+#include <limits>
+#include <string_view>
+#include <string>
+#include <memory>
+#include <vector>
+#include <charconv>
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wpadded"
+#pragma GCC diagnostic ignored "-Waggregate-return"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+
+  // Forward definitions.
+  class runner;
+  class suite;
+  class test_case;
+
+  namespace detail
+  {
+    class check_result;
+    class reporter;
+    class stopwatch;
+
+    /**
+     * @brief Output stream manipulator for ending a line in test reports.
+     *
+     * @details
+     * Calls `reporter::end_line()`, which appends a line ending to the
+     * internal buffer. Unlike `std::endl`, it does not flush; the buffer
+     * is written later, by the concrete reporters.
+     *
+     * @param stream Reference to the `reporter` instance.
+     * @return Reference to the same `reporter` instance, enabling chaining
+     * of output operations.
+     */
+    reporter&
+    endl (reporter& stream);
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @brief Parameterised stream manipulator for outputting indentation.
+     *
+     * @details
+     * Holds the indentation level; used with `reporter::operator<<` so
+     * that `*this << indent(n) << "text"` works naturally in chains.
+     */
+    struct indentation
+    {
+      /**
+       * @brief Number of four-space indentation levels.
+       *
+       * @details
+       * Converted into spaces by `reporter::operator<<`.
+       */
+      size_t level;
+    };
+
+    /**
+     * @brief Factory function that creates an `indentation` manipulator.
+     *
+     * @details
+     * Allows writing `reporter << indent(n)` instead of constructing the
+     * manipulator explicitly.
+     *
+     * @param level The number of four-space indentation levels.
+     * @return An `indentation` value for use with `operator<<`.
+     */
+    [[nodiscard]] indentation
+    indent (size_t level);
+
+    // ========================================================================
+
+    /**
+     * @brief The kinds of records written by the reporters.
+     *
+     * @details
+     * The output policy, which decides where each kind of record is
+     * written at each verbosity level, is in `reporter::route()`. The
+     * concrete reporters only format the records and ask where they go.
+     */
+    enum class record_kind : uint8_t
+    {
+      /**
+       * @brief The informational lines written at the beginning of the
+       * session.
+       */
+      info,
+
+      /**
+       * @brief The heading that marks the beginning of a suite.
+       */
+      suite_heading,
+
+      /**
+       * @brief The result line of a suite.
+       */
+      suite_result,
+
+      /**
+       * @brief The heading that marks the beginning of a test case.
+       */
+      test_case_heading,
+
+      /**
+       * @brief The result line of a test case.
+       */
+      test_case_result,
+
+      /**
+       * @brief The line of a suite or of a test case skipped by the
+       * filter.
+       */
+      skipped,
+
+      /**
+       * @brief The line of a passed check.
+       */
+      passed_check,
+
+      /**
+       * @brief The lines of a failed check, or the failure of a suite.
+       */
+      failed_check,
+
+      /**
+       * @brief The totals of the session.
+       */
+      total,
+
+      /**
+       * @brief The report of an aborted test execution.
+       */
+      abort
+    };
+
+    /**
+     * @brief The destinations of a record.
+     *
+     * @details
+     * Returned by `reporter::route()`.
+     */
+    struct output_route
+    {
+      /**
+       * @brief Whether the record is written to the console.
+       *
+       * @details
+       * Depends on the kind of the record and on the verbosity.
+       */
+      bool console;
+
+      /**
+       * @brief Whether the record is written to the output file.
+       *
+       * @details
+       * True for all the records, when the output file is open, since the
+       * content of the file does not depend on the verbosity.
+       */
+      bool file;
+    };
+
+    // ========================================================================
+
+    /**
+     * @brief Abstract base class for the reporters that display test
+     * results, including operand values for failures.
+     *
+     * @details
+     * The `reporter` class is responsible for presenting test results within
+     * the µTest++ framework. It accumulates output in a buffer, using basic
+     * output operators for strings, characters, booleans, numbers, and
+     * pointers, and writes it to the console and to an optional output file.
+     *
+     * For failed checks, the reporter prints the actual values of the
+     * operands, pre-formatted by its `expression_formatter` (with type
+     * suffixes for numbers). The class supports multiple verbosity levels
+     * and colour-coded output to distinguish between passed and failed
+     * checks.
+     *
+     * The pure virtual member functions report the beginning and end of the
+     * session, the suites, and the test cases, and format the pass and fail
+     * results; they are implemented by `reporter_human` and `reporter_tap`.
+     * The concrete reporter is created by the runner, as selected by the
+     * `--reporter` command-line option, or by
+     * `runner_options::selected_reporter`.
+     *
+     * The reporters are internal to the framework: their public members are
+     * the protocol between the runner, the test nodes, the checks, and the
+     * reporter, and custom reporters are not supported. The applications
+     * select a reporter with the `--reporter` command-line option, or with
+     * the `runner_options`, and read the verbosity with
+     * `runner::verbosity_level()`.
+     *
+     * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+     */
+    class reporter
+    {
+      /**
+       * @brief The test case, which creates the checks.
+       *
+       * @details
+       * It passes the expression formatter to the check results created
+       * by `expect()` and `require()`.
+       */
+      friend class micro_test_plus::test_case;
+
+      /**
+       * @brief The check result, which formats the expressions.
+       *
+       * @details
+       * It formats its expression into the expression formatter, and
+       * retrieves the text when it reports the check.
+       */
+      friend class check_result;
+
+      /**
+       * @brief The runner, which lists the test cases.
+       *
+       * @details
+       * It writes the list of the test cases with `write_line()`.
+       */
+      friend class micro_test_plus::runner;
+
+    public:
+      /**
+       * @brief Constructor for the reporter class.
+       *
+       * @param opts The session options, passed to `runner::initialise()`
+       * or parsed by it from the command line.
+       */
+      explicit reporter (const runner_options& opts);
+
+      /**
+       * @brief Virtual destructor for the reporter class.
+       *
+       * @details
+       * Virtual, so that the concrete reporters, owned through a pointer to
+       * this base class, are destroyed correctly.
+       */
+      virtual ~reporter ();
+
+      /**
+       * @brief Output operator for std::string_view.
+       *
+       * @param sv The string view to output.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (std::string_view sv);
+
+      /**
+       * @brief Output operator for a single character.
+       *
+       * @param c The character to output.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (char c);
+
+      /**
+       * @brief Output operator for a constant character string.
+       *
+       * @details
+       * Also selected for the non-const `char` pointers and arrays, which
+       * the pointer template does not accept. A null pointer is output as
+       * `"nullptr"`.
+       *
+       * @param s The string to output, or a null pointer.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (const char* s);
+
+      /**
+       * @brief Output operator for boolean values.
+       *
+       * @param v The boolean value to output.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (bool v);
+
+      /**
+       * @brief Output operator for nullptr.
+       *
+       * @return Reference to the current reporter instance.
+       */
+      reporter& operator<< (std::nullptr_t);
+
+      /**
+       * @brief Output operator for arithmetic types.
+       *
+       * @tparam T The arithmetic type.
+       *
+       * @param v The value to output.
+       * @return Reference to the current reporter instance.
+       */
+      template <class T>
+        requires std::is_arithmetic_v<T>
+      reporter&
+      operator<< (T v);
+
+      /**
+       * @brief Output operator to display any pointer.
+       *
+       * @details
+       * The `char` pointers are excluded, so that they are output as
+       * strings by the `const char*` overload, as the `const char`
+       * pointers are.
+       *
+       * @tparam T The type pointed to, other than `char`.
+       *
+       * @param v The pointer value to output.
+       * @return Reference to the current reporter instance.
+       */
+      template <typename T>
+        requires (not std::is_same_v<T, char>)
+      reporter&
+      operator<< (T* v);
+
+      /**
+       * @brief Output operator for stream manipulators, such as `endl`.
+       *
+       * @param func Function pointer to the stream manipulator.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (reporter& (*func) (reporter&));
+
+      /**
+       * @brief Output operator for the `indentation` manipulator.
+       *
+       * @details
+       * Appends `indent_size_` spaces for each indentation level.
+       *
+       * @param m The indentation manipulator produced by `indent(n)`.
+       * @return Reference to the current reporter instance.
+       */
+      reporter&
+      operator<< (indentation m);
+
+      // ----------------------------------------------------------------------
+
+      /**
+       * @brief Appends a line ending to the internal output buffer.
+       *
+       * @details
+       * Nothing is written to the console or to the output file; the
+       * buffer is written by the concrete reporters, at the end of each
+       * test case or suite.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      end_line (void);
+
+      /**
+       * @brief Flushes the standard output stream and the output file.
+       *
+       * @details
+       * Only the C streams are flushed; the internal output buffer is not
+       * written.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      flush_streams (void);
+
+      /**
+       * @brief Returns whether the output file could not be opened.
+       *
+       * @details
+       * Checked by `runner::initialise()`, which reports it on the
+       * console, as the option errors are, and declines the session, so
+       * that no test is run and `runner::run_suites()` returns 2.
+       *
+       * @par Parameters
+       *   None.
+       * @retval true The output file was requested but could not be
+       * opened.
+       * @retval false No output file was requested, or it was opened.
+       */
+      [[nodiscard]] bool
+      has_output_file_error (void) const noexcept;
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+      /**
+       * @name Deprecated Functions
+       * @{
+       */
+
+      /**
+       * @brief Deprecated access to the verbosity level.
+       *
+       * @details
+       * Kept from the v5.0.1 `reporter` class, for the applications that
+       * read it through the deprecated `runner::reporter()`
+       * (`tr.reporter ().verbosity ()`). The level is the one returned by
+       * `runner::verbosity_level()`, from the same session options.
+       *
+       * @par Parameters
+       *   None.
+       * @return The verbosity level of the session.
+       */
+      [[deprecated ("use runner::verbosity_level() (since 6.0.0)"),
+        nodiscard]] auto
+      verbosity (void) const noexcept -> micro_test_plus::verbosity;
+
+      /**
+       * @}
+       */
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+      // ----------------------------------------------------------------------
+
+      /**
+       * @brief Reports a passed condition.
+       *
+       * @param message The message to display.
+       * @param expression The string representation of the expression.
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      pass (const std::string& message, const std::string& expression,
+            const test_case& test_case);
+
+      /**
+       * @brief Reports a passed condition whose text is not written.
+       *
+       * @details
+       * Called by the destructor of `check_result` instead of `pass()`,
+       * for a passed check that was neither formatted nor described,
+       * since `writes_passed_checks()` returned `false`; the check has
+       * already been numbered and is counted by the caller. The TAP
+       * reporter records the test point, so that the plan of a test case
+       * displayed as a block matches its test points; the human-readable
+       * reporter does nothing.
+       *
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      pass_without_text (const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Reports a failed condition.
+       *
+       * @param failure The failure details: the kind of the check, the
+       * message to display, whether the expression text is displayed,
+       * and the source location of the failure.
+       * @param expression The string representation of the expression.
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      fail (const failure_info& failure, const std::string& expression,
+            const test_case& test_case);
+
+      // ----------------------------------------------------------------------
+
+      /**
+       * @brief Marks the beginning of a test session.
+       *
+       * @details
+       * Called by `runner::initialise()`, after the reporter is created;
+       * implementations display the session heading.
+       *
+       * @param runner Reference to the test runner.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      begin_session (const runner& runner)
+          = 0;
+
+      /**
+       * @brief Marks the end of a test session.
+       *
+       * @details
+       * Called by `runner::run_suites()`, after all suites have run;
+       * implementations display the session summary.
+       *
+       * @param runner Reference to the test runner.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      end_session (const runner& runner)
+          = 0;
+
+      /**
+       * @brief Marks the beginning of a test suite.
+       *
+       * @details
+       * Called by `suite::run()` before the suite body, for the suites
+       * registered with `runner::add_suite()` and for the static suites, and
+       * by `runner::add_top_suite()` for the top suite.
+       *
+       * @param suite Reference to the test suite.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      begin_suite (const suite& suite)
+          = 0;
+
+      /**
+       * @brief Marks the end of a test suite.
+       *
+       * @details
+       * Called by `suite::run()` after the suite body, also when an
+       * exception escaped it, for the suites registered with
+       * `runner::add_suite()` and for the static suites, and by
+       * `runner::run_suites()` for the top suite; implementations display the
+       * suite results.
+       *
+       * @param suite Reference to the test suite.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      end_suite (const suite& suite)
+          = 0;
+
+      /**
+       * @brief Reports a test suite skipped by the filter.
+       *
+       * @details
+       * Called by `runner::run_child_suites()`, instead of running the suite,
+       * when its name does not match the first filter pattern; the suite
+       * has already been assigned its index. Implementations display a
+       * single line, without the suite body.
+       *
+       * @param suite Reference to the skipped test suite.
+       * @par Returns
+       *   Nothing.
+       *
+       * @since 6.0.0
+       */
+      virtual void
+      skip_suite (const suite& suite)
+          = 0;
+
+      /**
+       * @brief Reports a failure of a test suite outside its test cases.
+       *
+       * @details
+       * Called between `begin_suite()` and `end_suite()`, outside the test
+       * cases: by `suite::run()`, through `fail_unexpected_exception()`,
+       * when an exception escapes the suite body, and by
+       * `runner::reject_call()` and `runnable_base::accepts_test_case()`,
+       * when a call is rejected while the suite body runs. The suite has
+       * already advanced to its next test point, which numbers the
+       * failure after the test cases already run. Implementations add a
+       * failed line to the output buffer, at the indentation of the test
+       * cases, which `end_suite()` displays; there is no source location
+       * to show.
+       *
+       * @param message The message to display.
+       * @param suite Reference to the test suite.
+       * @par Returns
+       *   Nothing.
+       * @since 6.0.0
+       */
+      virtual void
+      fail_suite (const std::string& message, const suite& suite)
+          = 0;
+
+      /**
+       * @brief Marks the beginning of a test case.
+       *
+       * @details
+       * Called by `test_case::run()` before the test case body; the results
+       * buffered for an outer test case, if any, are written first (see
+       * `commit_outer_results()`), so that the buffer is empty when the
+       * body starts.
+       *
+       * @param test_case Reference to the test case.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      begin_test_case (const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Marks the end of a test case.
+       *
+       * @details
+       * Called by `test_case::run()` after the test case body; implementations
+       * display the test case results and clear the output buffer.
+       *
+       * @param test_case Reference to the test case.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      end_test_case (const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Reports a test case skipped by the filter.
+       *
+       * @details
+       * Called instead of `begin_test_case()` and `end_test_case()`, when the
+       * name of the test case, or of its suite, does not match the filter
+       * pattern of its level; the test case has already been assigned its
+       * index. Implementations display a single line, at the indentation
+       * of the test case.
+       *
+       * @param test_case Reference to the skipped test case.
+       * @par Returns
+       *   Nothing.
+       *
+       * @since 6.0.0
+       */
+      virtual void
+      skip_test_case (const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Reports the abort of the test execution.
+       *
+       * @details
+       * Called by `runner::abort()` between `begin_session()` and
+       * `end_session()`, before the abort handler and `::abort()`;
+       * neither the `end_test_case()` of the running test cases, if any,
+       * nor `end_session()` are called afterwards. The abort is caused
+       * either by a failed `require()`, when exceptions are disabled,
+       * after the failure was added to the output buffer, or by an
+       * explicit call of `runner::abort()`, from a test case body, from a
+       * suite body, or from the application.
+       *
+       * Implementations display the buffered results, if any, with the
+       * context that identifies the running test case, followed by a
+       * line with the location of the abort, unless the verbosity is
+       * silent, and write them to the output file, if open, since the
+       * totals are never reached. They then clear the buffer, since the
+       * abort handler may throw an exception that the application
+       * catches, and the results must not be written again.
+       *
+       * @param location The source location of the failed requirement,
+       * or of the `runner::abort()` call.
+       * @param is_requirement `true` if the abort is caused by a failed
+       * requirement.
+       * @par Returns
+       *   Nothing.
+       *
+       * @since 6.0.0
+       */
+      virtual void
+      abort_session (const reflection::source_location& location,
+                     bool is_requirement)
+          = 0;
+
+      /**
+       * @brief Returns the comment-prefix string used by this reporter format.
+       *
+       * @details
+       * Used by `write_info()` to prefix the informational lines, so that
+       * they are valid comments in the output format.
+       *
+       * @par Parameters
+       *   None.
+       * @return A null-terminated prefix string.
+       */
+      virtual const char*
+      comment_prefix (void) const noexcept
+          = 0;
+
+      /**
+       * @brief Returns the prefix of the lines that report an error.
+       *
+       * @details
+       * Used by the runner to write the command-line errors on the
+       * console when it refuses to run the tests, so that they are valid
+       * in the output format (for TAP, a `Bail out!` line). The default is
+       * `"error: "`, as the messages written on `stderr`.
+       *
+       * @par Parameters
+       *   None.
+       * @return A null-terminated prefix string.
+       */
+      virtual const char*
+      error_prefix (void) const noexcept;
+
+      /**
+       * @brief Returns whether the passed checks are written anywhere.
+       *
+       * @details
+       * Called by `test_case::expect()` and `test_case::require()`, so
+       * that a passed check whose line is never written does not format
+       * its expression, its messages, or its line. The answer depends
+       * only on the verbosity and on the output file, which do not change
+       * during the session. A failed check is always formatted.
+       *
+       * @par Parameters
+       *   None.
+       * @retval true The lines of the passed checks reach the console or
+       * the output file, at least in some cases.
+       * @retval false The descriptions and the expressions of the passed
+       * checks are never written; the TAP reporter writes only their test
+       * points (see `pass_without_text()`).
+       */
+      [[nodiscard]] bool
+      writes_passed_checks (void) const noexcept;
+
+      // ----------------------------------------------------------------------
+
+    protected:
+      /**
+       * @brief Writes the current buffered content to the output file.
+       *
+       * @details
+       * The buffer is written without appending a line ending, and is not
+       * cleared. ANSI colour sequences are removed, so the file receives
+       * plain text even when the console output is coloured. If no output
+       * file is open, the call has no effect.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_buffer_to_file (void);
+
+      /**
+       * @brief Tells where a kind of record is written.
+       *
+       * @details
+       * The single place of the output policy. The output file receives
+       * all the records, whatever the verbosity, so that its content does
+       * not depend on the console. The console receives, with each
+       * verbosity level:
+       * - `silent`: nothing;
+       * - `quiet`: the failed checks, the failures of the suites, the
+       *   totals, and the report of an aborted execution;
+       * - `normal`: in addition, the informational lines, the headings
+       *   and results of the suites, the results of the test cases, and
+       *   the skipped suites and test cases;
+       * - `verbose`: in addition, the headings of the test cases and the
+       *   lines of the passed checks.
+       *
+       * The headings of the test cases that contain a failure are also
+       * displayed with the normal verbosity (see `console_lines()`), but
+       * the passed checks are not; they are counted, without being
+       * formatted (see `writes_passed_checks()`), and the TAP reporter
+       * records their test points (see `pass_without_text()`). The
+       * concrete reporters adapt the quiet and normal levels to their
+       * format.
+       *
+       * @param kind The kind of record.
+       * @return The destinations of the record.
+       */
+      [[nodiscard]] output_route
+      route (record_kind kind) const noexcept;
+
+      /**
+       * @brief Returns the buffered lines that the console displays when
+       * a test case or a suite ends, or when its results are committed.
+       *
+       * @details
+       * With the verbose verbosity, all the buffered lines; with the
+       * normal verbosity, all the buffered lines of a failed test case or
+       * suite, otherwise none; with the quiet verbosity, only the lines
+       * of the failed checks; with the silent verbosity, none.
+       *
+       * @param failed Whether the test case or the suite failed, or, when
+       * committing the results of an outer test case, whether the buffer
+       * contains a failed check.
+       * @return A view of `buffer_` or of `failures_`, valid until they
+       * are modified.
+       */
+      [[nodiscard]] std::string_view
+      console_lines (bool failed) const noexcept;
+
+      /**
+       * @brief Writes a text to the console, unchanged.
+       *
+       * @details
+       * The text is written with its size, not as a C string, so that a
+       * zero character in a message does not end the output. No line
+       * ending is appended.
+       *
+       * @param text The text to write.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_console_text (std::string_view text);
+
+      /**
+       * @brief Records that the lines appended to the buffer from a
+       * given position are a failure.
+       *
+       * @details
+       * Sets `buffer_has_failures_` and, with the quiet verbosity, which
+       * displays only the failures, copies the lines to `failures_`.
+       *
+       * @param begin The position in `buffer_` where the lines of the
+       * failure begin.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      mark_failure (size_t begin);
+
+      /**
+       * @brief Notes the suite that begins, for the headings displayed
+       * later.
+       *
+       * @details
+       * Called by `begin_suite()` of the concrete reporters, with the
+       * information whether the heading of the suite was displayed.
+       *
+       * @param suite The suite that begins.
+       * @param displayed Whether the heading was written to the console.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      enter_suite (const suite& suite, bool displayed);
+
+      /**
+       * @brief Writes formatted text to the console.
+       *
+       * @details
+       * All reporter console output is routed through this function, so
+       * that it reaches the standard output stream via a single path,
+       * shared with the output of the user `printf()` calls. Using one
+       * stream-based path keeps the reporter and user output in the same
+       * buffer, preserving their relative order.
+       *
+       * @param format A `printf()`-style format string.
+       * @param ... The arguments referred to by the format string.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_console (const char* format, ...)
+#if defined(__GNUC__)
+          __attribute__ ((format (printf, 2, 3)))
+#endif // defined(__GNUC__)
+          ;
+
+      /**
+       * @brief Writes formatted text to the output file.
+       *
+       * @details
+       * If no output file is open, the call has no effect, so callers do
+       * not need to check `output_file_` themselves.
+       *
+       * @param format A `printf()`-style format string.
+       * @param ... The arguments referred to by the format string.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_file (const char* format, ...)
+#if defined(__GNUC__)
+          __attribute__ ((format (printf, 2, 3)))
+#endif // defined(__GNUC__)
+          ;
+
+      /**
+       * @brief Writes formatted lines to the output file and, when
+       * requested, to the console.
+       *
+       * @details
+       * The text is formatted once, and the same text is written to the
+       * output file, if open, and, when @p to_console is true, to
+       * `stdout`. As in `write_buffer_to_file()`, the ANSI colour
+       * sequences are removed from the file copy, so a console line
+       * with colours and its plain file line are written by one call.
+       * The format normally ends with a line ending; any empty line or
+       * buffered output that precedes the console line is written by the
+       * caller, before this call.
+       *
+       * @param to_console Whether to write the text to `stdout` as well.
+       * @param format A `printf()`-style format string.
+       * @param ... The arguments referred to by the format string.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_line (bool to_console, const char* format, ...)
+#if defined(__GNUC__)
+          __attribute__ ((format (printf, 3, 4)))
+#endif // defined(__GNUC__)
+          ;
+
+      /**
+       * @brief Writes the informational (non-result) lines to the console
+       * and to the output file.
+       *
+       * @param arguments The command line of the session, listed when not
+       * empty; passed by `begin_session()` from the runner options, so
+       * that the reporter does not keep a copy.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      write_info (const std::vector<std::string>& arguments);
+
+      /**
+       * @brief Tells the console where the output file was written.
+       *
+       * @details
+       * Called by the derived classes at the end of the session, after
+       * the totals, or after the abort report. It writes a line that
+       * names the output file, prefixed with `comment_prefix()` so that
+       * it is valid in the output format, and flushes the streams, so
+       * that the file is complete when the line is displayed. Nothing is
+       * written if there is no output file, or with the `silent`
+       * verbosity.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      announce_output_file (void);
+
+      /**
+       * @brief Clears the output buffer.
+       *
+       * @details
+       * Also resets `buffer_has_failures_`, so that the flag always
+       * describes the current content of the buffer.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      clear_buffer (void);
+
+      /**
+       * @brief Size of the array that receives the elapsed time text.
+       *
+       * @details
+       * Large enough for `", time: 4294967295.999 ms"`, the longest text
+       * produced by `format_elapsed_time()` (26 bytes with the terminator),
+       * and for the worst case assumed by GCC 11, which does not know that
+       * the fraction is below 1000 and counts ten digits for it (33 bytes).
+       */
+      static constexpr size_t elapsed_time_size_ = 40;
+
+      /**
+       * @brief Formats the elapsed time of a suite or of the session.
+       *
+       * @details
+       * The text is appended to the summary lines by the concrete
+       * reporters, in the form `", time: 1.234 ms"`; it is empty when
+       * the stopwatch has no elapsed time, so that the summary lines
+       * remain identical on the platforms without a clock.
+       *
+       * The array has a fixed size, known at compile time, so that the
+       * compiler can verify that the text is never truncated.
+       *
+       * @param stopwatch The stopwatch of the suite or of the runner.
+       * @param message The character array that receives the
+       * null-terminated text.
+       * @par Returns
+       *   Nothing.
+       */
+      static void
+      format_elapsed_time (const stopwatch& stopwatch,
+                           char (&message)[elapsed_time_size_]);
+
+      /**
+       * @brief Size of the array that receives the totals text.
+       *
+       * @details
+       * Large enough for the longest text produced by
+       * `format_session_totals()`, which is longer than the texts of the
+       * suites and of the test cases: 53 characters, four counts, two
+       * fragments of up to 20 characters and a count each (the longest
+       * fragment is `", N test cases failed"`), and the terminator, with
+       * the counts of the largest `size_t` value (10 digits on 32-bit
+       * targets, 20 on 64-bit ones). The fragments are counted at their
+       * maximum length, as the compiler does when it checks for
+       * truncation.
+       *
+       * The array is a local variable of the functions that end the test
+       * cases, which run at the deepest point of the stack, so it is not
+       * larger than needed on the 32-bit embedded targets.
+       */
+      static constexpr size_t totals_size_
+          = 94 + 6 * (std::numeric_limits<size_t>::digits10 + 1);
+
+      /**
+       * @brief Formats the totals of the test session.
+       *
+       * @details
+       * The text is the part of the session summary line common to the
+       * concrete reporters, in the form `"7 checks passed, 1 failed, in
+       * 3 test cases, 2 test suites"`; the numbers of test cases and of
+       * suites skipped by the filter follow the respective counts, as
+       * `", 1 skipped"`, only when not zero. The label (`Total:` or
+       * `total:`), the markers, and the elapsed time are added by the
+       * callers.
+       *
+       * @param runner The runner of the test session.
+       * @param message The character array that receives the
+       * null-terminated text.
+       * @par Returns
+       *   Nothing.
+       */
+      static void
+      format_session_totals (const runner& runner,
+                             char (&message)[totals_size_]);
+
+      /**
+       * @brief Formats the totals of a suite.
+       *
+       * @details
+       * The text is the part of the suite result line common to the
+       * concrete reporters: `"7 checks in 3 test cases"` for a passed
+       * suite, and `"6 checks passed, 1 failed, in 3 test cases"` for a
+       * failed one; the number of test cases skipped by the filter
+       * follows, as `", 1 skipped"`, only when not zero. The status, the
+       * enclosing markers, and the elapsed time are added by the callers.
+       *
+       * @param suite The suite that ended.
+       * @param message The character array that receives the
+       * null-terminated text.
+       * @par Returns
+       *   Nothing.
+       */
+      static void
+      format_suite_totals (const suite& suite, char (&message)[totals_size_]);
+
+      /**
+       * @brief Formats the totals of a test case.
+       *
+       * @details
+       * The text is the part of the test case result line common to the
+       * concrete reporters: `"7 checks"` for a passed test case, and
+       * `"6 checks passed, 1 failed"` for a failed one, followed by the
+       * number of failed nested test cases, as `", 1 test case failed"`,
+       * only when not zero, since a test case may fail because of a
+       * nested one alone. The status and the enclosing markers are added
+       * by the callers.
+       *
+       * @param test_case The test case that ended.
+       * @param message The character array that receives the
+       * null-terminated text.
+       * @par Returns
+       *   Nothing.
+       */
+      static void
+      format_test_case_totals (const test_case& test_case,
+                               char (&message)[totals_size_]);
+
+      /**
+       * @brief Writes the results buffered for the outer test case
+       * before a nested test case begins or is skipped.
+       *
+       * @details
+       * The concrete reporters decide where the results are written, and
+       * with which verbosity levels; the buffer is cleared.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      commit_buffer (void)
+          = 0;
+
+      /**
+       * @brief Writes the results of the outer test case, if any, before
+       * a nested test case begins or is skipped.
+       *
+       * @details
+       * Called by `begin_test_case()` and `skip_test_case()` of the
+       * concrete reporters, so that the output follows the execution
+       * order.
+       *
+       * @par Parameters
+       *   None.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      commit_outer_results (void);
+
+      /**
+       * @brief Outputs the prefix for a passing condition.
+       *
+       * @details
+       * Called by `pass()` before the expression text; the prefix includes
+       * the message, if any.
+       *
+       * @param message The message to display.
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      output_pass_prefix (const std::string& message,
+                          const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Outputs the suffix for a passing condition.
+       *
+       * @details
+       * Called by `pass()` after the expression text, to complete the line.
+       *
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      output_pass_suffix (const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Outputs the prefix for a failing condition.
+       *
+       * @details
+       * Called by `fail()` before the expression text; the prefix includes
+       * the message, if any, and the source location.
+       *
+       * @param message The message to display.
+       * @param has_expression Whether the failure is associated with an
+       * expression.
+       * @param location The source location of the failure.
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      output_fail_prefix (const std::string& message,
+                          const bool has_expression,
+                          const reflection::source_location& location,
+                          const test_case& test_case)
+          = 0;
+
+      /**
+       * @brief Outputs the suffix for a failing condition.
+       *
+       * @details
+       * Called by `fail()` after the expression text, to complete the
+       * output. The kind of the check lets a reporter show that a failed
+       * requirement stops the test case, or aborts the test execution.
+       *
+       * @param location The source location of the failure.
+       * @param kind The kind of the check (expectation or requirement).
+       * @param test_case The test case that owns this check.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      output_fail_suffix (const reflection::source_location& location,
+                          check_kind kind, const test_case& test_case)
+          = 0;
+
+    protected:
+      /**
+       * @brief Number of spaces per nesting level.
+       *
+       * @details
+       * Used by the concrete reporters to indent the lines of the nested
+       * test cases; four spaces is also the TAP 14 subtest indentation.
+       */
+      static constexpr size_t indent_size_ = 4;
+
+      /**
+       * @brief The verbosity level for test reporting.
+       *
+       * @details
+       * A copy of the level kept by the runner, set by the constructor from
+       * the same session options and not changed afterwards. The public
+       * accessor is `runner::verbosity_level()`.
+       */
+      const micro_test_plus::verbosity verbosity_;
+
+      /**
+       * @brief ANSI colour codes for output formatting.
+       *
+       * @details
+       * Empty strings by default; the human-readable reporter assigns
+       * `detail::colours_red_green` when colours are enabled by
+       * `runner_options::colour`, explicitly or because the console
+       * is a terminal.
+       */
+      colours colours_{};
+
+      /**
+       * @brief Output accumulation buffer.
+       *
+       * @details
+       * Accumulates all reporter output until it is written to the
+       * console or the output file via `write_console_text()` or
+       * `write_buffer_to_file()`.
+       */
+      std::string buffer_{};
+
+      /**
+       * @brief Whether the output buffer contains a failed check.
+       *
+       * @details
+       * Set by `fail()` and reset by `clear_buffer()`. When a nested test
+       * case begins, the concrete reporters use it to decide whether the
+       * results already buffered for the outer test case are displayed
+       * with normal verbosity.
+       */
+      bool buffer_has_failures_{ false };
+
+      /**
+       * @brief The lines of the failed checks, for the quiet verbosity.
+       *
+       * @details
+       * With the quiet verbosity, the console displays only the failed
+       * checks, while `buffer_` may also contain the passed checks, for
+       * the output file. Filled by `mark_failure()` and emptied by
+       * `clear_buffer()`; not used with the other verbosity levels.
+       */
+      std::string failures_{};
+
+      /**
+       * @brief A test case that has begun and not yet ended.
+       *
+       * @details
+       * Recorded by `begin_test_case()` and removed by `end_test_case()`.
+       */
+      struct open_test_case
+      {
+        /**
+         * @brief The test case.
+         *
+         * @details
+         * Used to display its heading when its results are committed.
+         */
+        const test_case* test;
+
+        /**
+         * @brief Whether the heading of the test case was displayed.
+         *
+         * @details
+         * Always true with verbose verbosity; otherwise set when the
+         * heading is displayed because the test case, or a nested one,
+         * has something to show, so that it is not displayed again.
+         */
+        bool name_displayed;
+      };
+
+      /**
+       * @brief The test cases that have begun and not yet ended,
+       * outermost first.
+       *
+       * @details
+       * The last element is the test case that owns the buffered results.
+       */
+      std::vector<open_test_case> open_test_cases_{};
+
+      /**
+       * @brief Displays the headings not yet displayed, of the open test
+       * cases.
+       *
+       * @details
+       * Walks `open_test_cases_` from the outermost test case and, for
+       * each one whose heading was not displayed yet, calls
+       * `display_open_heading()` and marks it as displayed. A failure in
+       * a nested test case also fails the outer ones, so their headings
+       * are displayed first, to show where the result is.
+       *
+       * @param include_last Whether to display the heading of the
+       * innermost open test case too; false for the result of a passed
+       * test case, which is not preceded by its own heading.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      display_open_test_cases (bool include_last);
+
+      /**
+       * @brief Writes the heading of an open test case.
+       *
+       * @details
+       * Called by `display_open_test_cases()`, for each open test case
+       * whose heading was not displayed yet. The concrete reporters
+       * write the line in their own format, preceded by an empty line
+       * when they need one, and update `add_empty_line_` accordingly.
+       *
+       * @param open The open test case.
+       * @param is_first Whether this is the first heading written by the
+       * current call of `display_open_test_cases()`.
+       * @par Returns
+       *   Nothing.
+       */
+      virtual void
+      display_open_heading (const open_test_case& open, bool is_first)
+          = 0;
+
+      /**
+       * @brief The suite that has begun and not yet ended.
+       *
+       * @details
+       * Set by `enter_suite()`; null outside the suites.
+       */
+      const suite* current_suite_{ nullptr };
+
+      /**
+       * @brief Whether the heading of the current suite was displayed on
+       * the console.
+       *
+       * @details
+       * Set by `enter_suite()`; with the quiet verbosity, which does not
+       * display the headings, the heading is displayed when the first
+       * failure of the suite is.
+       */
+      bool suite_displayed_{ false };
+
+      /**
+       * @brief Expression formatter for pass and fail reporting.
+       *
+       * @details
+       * Used by the checks (`test_case::expect()`,
+       * `test_case::require()`, and `detail::check_result`), which are
+       * friends, to pre-format expressions at construction time; `pass()`
+       * and `fail()` then append the formatted text to `buffer_`. The
+       * applications format their own types by defining `operator<<` for
+       * the public `expression_formatter` alias.
+       */
+      expression_formatter expression_{ colours_ };
+
+      /**
+       * @brief Whether to write an empty line before the next console
+       * output.
+       *
+       * @details
+       * Set and cleared by the concrete reporters, to separate the groups
+       * of console lines, such as the suites and the failed test cases;
+       * the output file is not affected.
+       */
+      bool add_empty_line_{ true };
+
+      /**
+       * @brief Whether the output file could not be opened.
+       *
+       * @details
+       * Set by the constructor, and returned by `has_output_file_error()`.
+       * Kept next to the other flags, so that the class does not end with
+       * padding, which the derived classes would report.
+       */
+      bool has_output_file_error_{ false };
+
+      /**
+       * @brief Path of the optional output file.
+       *
+       * @details
+       * Copied by the constructor from the session options. Used to
+       * name the file in the confirmation message displayed when the file
+       * is closed (not displayed with the `silent` verbosity).
+       */
+      std::string output_file_path_{};
+
+      /**
+       * @brief Optional output file, receiving a copy of the test report.
+       *
+       * @details
+       * When non-null, the report is written to this file in addition to
+       * the console, without colour sequences. The file receives the full
+       * report, regardless of the verbosity. The file is opened by the
+       * constructor and closed by the destructor.
+       */
+      FILE* output_file_{ nullptr };
+    };
+
+    // ------------------------------------------------------------------------
+  } // namespace detail
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ============================================================================
+// Templates, inlines & constexpr implementations.
+
+#include "inlines/reporter-inlines.h"
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_REPORTER_H_
+
+// ----------------------------------------------------------------------------

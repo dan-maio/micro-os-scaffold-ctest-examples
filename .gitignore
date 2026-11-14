@@ -1,0 +1,13 @@
+# Build trees, generated logs and caches.
+**/tests/build/
+**/build-logs/
+**/Testing/Temporary/
+**/.hw-logs/
+**/.qemu-logs/
+**/.host-logs/
+**/CMakeFiles/
+
+# Editor and OS leftovers.
+.DS_Store
+*.swp
+*~

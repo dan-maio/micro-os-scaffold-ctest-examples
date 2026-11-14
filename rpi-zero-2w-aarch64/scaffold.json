@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-14T12:42:42.862Z",
+  "generator": {
+    "name": "micro-os-scaffold",
+    "version": "1.0.0",
+    "node": "v24.22.2",
+    "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
+  },
+  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "sourceUrl": null,
+  "sourceBranch": null,
+  "microTestPlus": {
+    "spec": "/home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus",
+    "ref": null,
+    "kind": "folder",
+    "name": "@micro-os-plus/micro-test-plus",
+    "version": "6.0.0",
+    "commit": null,
+    "destination": "third_party/micro-test-plus",
+    "force": false,
+    "boards": [
+      {
+        "project": "micro-os-plus-iii-aarch64",
+        "platform": "aarch64-rpi-zero-2w",
+        "board": "rpi-zero-2w",
+        "status": "integrated",
+        "runtime": [
+          {
+            "rule": "linker script: .init_array kept, with __init_array_start/__init_array_end",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-aarch64/test/boards/rpi-zero-2w/linker.ld"
+          },
+          {
+            "rule": "linker script: heap region _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-aarch64/test/boards/rpi-zero-2w/linker.ld"
+          },
+          {
+            "rule": "boot code runs the static constructors",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-aarch64/test/boards/rpi-zero-2w/src/startup.S"
+          },
+          {
+            "rule": "the heap is given to the µOS++ free store (malloc) at start-up",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-smp/src/startup/initialise-free-store.cpp"
+          },
+          {
+            "rule": "sbrk () over _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-smp/src/libc/_sbrk.c"
+          }
+        ],
+        "console": {
+          "model": 1,
+          "why": "uart.hpp has putc_uart and include/semihosting.hpp has write_str; _write mirrors only verdicts"
+        },
+        "example": "micro-os-plus-iii-aarch64/test/rpi-zero-2w/mtp-example",
+        "support": "micro-os-plus-iii-aarch64/test/mtp",
+        "starters": [
+          "mtp-example",
+          "mtp-args",
+          "mtp-smp"
+        ],
+        "ctest": [
+          "aarch64-rpi-zero-2w-mtp-example-qemu",
+          "aarch64-rpi-zero-2w-mtp-example-hwd",
+          "aarch64-rpi-zero-2w-mtp-args-qemu",
+          "aarch64-rpi-zero-2w-mtp-args-hwd",
+          "aarch64-rpi-zero-2w-mtp-smp-qemu",
+          "aarch64-rpi-zero-2w-mtp-smp-hwd"
+        ],
+        "smpBoot": 1
+      }
+    ],
+    "patches": [
+      "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file",
+      "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file",
+      "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file",
+      "test/boards/rpi-zero-2w/hw.sh: µTest++ command line for run-hw.sh"
+    ]
+  },
+  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64",
+  "mode": "lean",
+  "minimal": true,
+  "lean": true,
+  "kernel": {
+    "id": "micro-os-plus-iii",
+    "scaffoldName": "micro-os-plus-iii-smp",
+    "version": "7.1.0",
+    "role": "kernel",
+    "buildSystem": "cmake",
+    "architecture": "portable",
+    "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/micro-os-plus-iii-smp"
+  },
+  "projects": [
+    {
+      "id": "micro-os-plus-iii",
+      "index": 1,
+      "role": "kernel",
+      "scaffoldName": "micro-os-plus-iii-smp",
+      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/micro-os-plus-iii-smp",
+      "buildSystem": "cmake",
+      "architecture": "portable",
+      "version": "7.1.0",
+      "tools": [
+        "cmake",
+        "git",
+        "ninja",
+        "python3"
+      ],
+      "platforms": [],
+      "boards": []
+    },
+    {
+      "id": "micro-os-plus-iii-aarch64",
+      "index": 3,
+      "role": "port",
+      "scaffoldName": "micro-os-plus-iii-aarch64",
+      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/micro-os-plus-iii-aarch64",
+      "buildSystem": "cmake",
+      "architecture": "aarch64",
+      "version": "0.1.0",
+      "tools": [
+        "aarch64-none-elf-g++",
+        "aarch64-none-elf-gcc",
+        "aarch64-none-elf-gdb",
+        "cmake",
+        "git",
+        "ninja",
+        "openocd",
+        "python3",
+        "qemu-system-aarch64"
+      ],
+      "platforms": [
+        {
+          "id": "aarch64-rpi-zero-2w",
+          "board": "rpi-zero-2w",
+          "project": "micro-os-plus-iii-aarch64",
+          "selectionId": "3.1",
+          "platformIndex": 1,
+          "qemu": [
+            "qemu-system-aarch64"
+          ],
+          "hasHardwareTests": true,
+          "tests": [
+            {
+              "app": "smp-mat-test",
+              "target": "smp-mat-test",
+              "kind": "board-test",
+              "path": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-aarch64/test/rpi-zero-2w/smp-mat-test",
+              "ctestPattern": "^aarch64-rpi-zero-2w-smp-mat-test-(qemu|hwd)$",
+              "testIndex": 12,
+              "selectionId": "3.1.12"
+            }
+          ]
+        }
+      ],
+      "boards": [
+        {
+          "id": "rpi-zero-2w",
+          "hardwareRunner": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-aarch64/test/boards/rpi-zero-2w/hw.sh",
+          "openocdConfig": null,
+          "adapter": null,
+          "transport": null,
+          "vidPid": null,
+          "gdbServer": null,
+          "preTestScript": null,
+          "tests": []
+        }
+      ]
+    }
+  ],
+  "selectedProjects": [
+    "micro-os-plus-iii-aarch64"
+  ],
+  "selectedSelections": [
+    "3.1.12"
+  ],
+  "selectedPlatforms": [
+    "aarch64-rpi-zero-2w"
+  ],
+  "selectedTests": [
+    {
+      "selectionId": "3.1.12",
+      "project": "micro-os-plus-iii-aarch64",
+      "platform": "aarch64-rpi-zero-2w",
+      "board": "rpi-zero-2w",
+      "app": "smp-mat-test",
+      "ctestPattern": "^aarch64-rpi-zero-2w-smp-mat-test-(qemu|hwd)$",
+      "kind": "board-test"
+    },
+    {
+      "selectionId": null,
+      "project": "micro-os-plus-iii-aarch64",
+      "platform": "aarch64-rpi-zero-2w",
+      "board": "rpi-zero-2w",
+      "app": "mtp-example",
+      "ctestPattern": "^aarch64-rpi-zero-2w-mtp-example-(qemu|hwd)$",
+      "kind": "micro-test-plus"
+    },
+    {
+      "selectionId": null,
+      "project": "micro-os-plus-iii-aarch64",
+      "platform": "aarch64-rpi-zero-2w",
+      "board": "rpi-zero-2w",
+      "app": "mtp-args",
+      "ctestPattern": "^aarch64-rpi-zero-2w-mtp-args-(qemu|hwd)$",
+      "kind": "micro-test-plus"
+    },
+    {
+      "selectionId": null,
+      "project": "micro-os-plus-iii-aarch64",
+      "platform": "aarch64-rpi-zero-2w",
+      "board": "rpi-zero-2w",
+      "app": "mtp-smp",
+      "ctestPattern": "^aarch64-rpi-zero-2w-mtp-smp-(qemu|hwd)$",
+      "kind": "micro-test-plus"
+    }
+  ],
+  "tools": {
+    "aarch64-none-elf-g++": {
+      "key": "aarch64-none-elf-g++",
+      "kind": "compiler",
+      "language": "C++",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-g++",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "15.2.1",
+      "rawVersion": "aarch64-none-elf-g++ (xPack GNU AArch64 Embedded GCC x86_64) 15.2.1 20251203",
+      "origin": "xPacks"
+    },
+    "aarch64-none-elf-gcc": {
+      "key": "aarch64-none-elf-gcc",
+      "kind": "compiler",
+      "language": "C",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gcc",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "15.2.1",
+      "rawVersion": "aarch64-none-elf-gcc (xPack GNU AArch64 Embedded GCC x86_64) 15.2.1 20251203",
+      "origin": "xPacks"
+    },
+    "aarch64-none-elf-gdb": {
+      "key": "aarch64-none-elf-gdb",
+      "kind": "debugger",
+      "language": null,
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gdb",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "16.3.90",
+      "rawVersion": "GNU gdb (xPack GNU AArch64 Embedded GCC x86_64) 16.3.90.20250906-git",
+      "origin": "xPacks"
+    },
+    "cmake": {
+      "key": "cmake",
+      "kind": "build",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/cmake",
+      "binDir": "/usr/bin",
+      "version": "4.4.4",
+      "rawVersion": "cmake version 4.4.4",
+      "origin": "PATH",
+      "previousPaths": [
+        "/home/dan/.local/xPacks/@xpack-dev-tools/cmake/3.26.5-1.1/.content/bin/cmake",
+        "/usr/share/cmake"
+      ],
+      "reconciled": true
+    },
+    "git": {
+      "key": "git",
+      "kind": "vcs",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/git",
+      "binDir": "/usr/bin",
+      "version": "2.56.0",
+      "rawVersion": "git version 2.56.0",
+      "origin": "PATH"
+    },
+    "ninja": {
+      "key": "ninja",
+      "kind": "build",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/ninja",
+      "binDir": "/usr/bin",
+      "version": "1.13.2",
+      "rawVersion": "1.13.2",
+      "origin": "PATH",
+      "previousPaths": [
+        "/home/dan/.local/xPacks/@xpack-dev-tools/ninja-build/1.11.1-3.1/.content/bin/ninja"
+      ],
+      "reconciled": true
+    },
+    "openocd": {
+      "key": "openocd",
+      "kind": "debug-probe",
+      "language": null,
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin/openocd",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin",
+      "version": "0.12.0+dev-02228-ge5888bda3-dirty",
+      "rawVersion": "xPack Open On-Chip Debugger 0.12.0+dev-02228-ge5888bda3-dirty (2025-10-04-22:42)",
+      "origin": "xPacks"
+    },
+    "python3": {
+      "key": "python3",
+      "kind": "scripting",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/python3",
+      "binDir": "/usr/bin",
+      "version": "3.14.7",
+      "rawVersion": "Python 3.14.7",
+      "origin": "PATH"
+    },
+    "qemu-system-aarch64": {
+      "key": "qemu-system-aarch64",
+      "kind": "emulator",
+      "language": null,
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/qemu-arm/9.2.4-1.1/.content/bin/qemu-system-aarch64",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/qemu-arm/9.2.4-1.1/.content/bin",
+      "version": "9.2.4",
+      "rawVersion": "xPack QEMU emulator version 9.2.4",
+      "origin": "xPacks"
+    }
+  },
+  "libraries": {
+    "build-helper": {
+      "key": "build-helper",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@micro-os-plus/build-helper/2.17.0",
+      "version": "2.17.0",
+      "origin": "xPacks"
+    },
+    "arm-cmsis": {
+      "key": "arm-cmsis",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis/4.5.0-7",
+      "version": "4.5.0-7",
+      "origin": "xPacks"
+    },
+    "arm-cmsis-rtos-validator": {
+      "key": "arm-cmsis-rtos-validator",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis-rtos-validator/1.0.0-4",
+      "version": "1.0.0-4",
+      "origin": "xPacks"
+    },
+    "chan-fatfs": {
+      "key": "chan-fatfs",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/chan-fatfs/0.13.1-5",
+      "version": "0.13.1-5",
+      "origin": "xPacks"
+    },
+    "libucontext": {
+      "key": "libucontext",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/libucontext/1.2.0-5",
+      "version": "1.2.0-5",
+      "origin": "xPacks"
+    },
+    "arm-cmsis-core": {
+      "key": "arm-cmsis-core",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/arm-cmsis-core/5.4.0-6",
+      "version": "5.4.0-6",
+      "origin": "xPacks"
+    },
+    "raspberrypi-pico-sdk": {
+      "key": "raspberrypi-pico-sdk",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/raspberrypi-pico-sdk/1.5.1-1",
+      "version": "1.5.1-1",
+      "origin": "xPacks"
+    }
+  },
+  "build": {
+    "configurations": [
+      {
+        "name": "aarch64-rpi-zero-2w-cmake-gcc-debug",
+        "project": "micro-os-plus-iii-aarch64",
+        "platform": "aarch64-rpi-zero-2w",
+        "buildType": "Debug",
+        "toolchain": "aarch64-none-elf-gcc",
+        "toolchainFile": "xpacks/@micro-os-plus/build-helper/cmake/toolchains/aarch64-none-elf-gcc.cmake",
+        "available": [
+          "aarch64-rpi-zero-2w-cmake-gcc-debug",
+          "aarch64-rpi-zero-2w-cmake-gcc-release"
+        ],
+        "selectionIds": [
+          "3.1.12"
+        ],
+        "tests": [
+          {
+            "app": "smp-mat-test",
+            "selectionId": "3.1.12",
+            "ctestPattern": "^aarch64-rpi-zero-2w-smp-mat-test-(qemu|hwd)$",
+            "kind": "board-test"
+          },
+          {
+            "app": "mtp-example",
+            "selectionId": null,
+            "ctestPattern": "^aarch64-rpi-zero-2w-mtp-example-(qemu|hwd)$",
+            "kind": "micro-test-plus"
+          },
+          {
+            "app": "mtp-args",
+            "selectionId": null,
+            "ctestPattern": "^aarch64-rpi-zero-2w-mtp-args-(qemu|hwd)$",
+            "kind": "micro-test-plus"
+          },
+          {
+            "app": "mtp-smp",
+            "selectionId": null,
+            "ctestPattern": "^aarch64-rpi-zero-2w-mtp-smp-(qemu|hwd)$",
+            "kind": "micro-test-plus"
+          }
+        ],
+        "result": {
+          "name": "aarch64-rpi-zero-2w-cmake-gcc-debug",
+          "project": "micro-os-plus-iii-aarch64",
+          "platform": "aarch64-rpi-zero-2w",
+          "status": "pass",
+          "phase": "build",
+          "configure": {
+            "exitCode": 0,
+            "log": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs/aarch64-rpi-zero-2w-cmake-gcc-debug.configure.log"
+          },
+          "build": {
+            "exitCode": 0,
+            "log": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs/aarch64-rpi-zero-2w-cmake-gcc-debug.build.log"
+          },
+          "actual": {
+            "CMAKE_C_COMPILER": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gcc",
+            "CMAKE_CXX_COMPILER": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-g++"
+          },
+          "expected": {
+            "compiler": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gcc",
+            "cxx": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-g++"
+          },
+          "compilerMismatch": [],
+          "xpackLinks": [
+            {
+              "key": "libucontext",
+              "source": "/home/dan/.local/xPacks/@xpack-3rd-party/libucontext/1.2.0-5",
+              "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/libucontext"
+            },
+            {
+              "key": "arm-cmsis-core",
+              "source": "/home/dan/.local/xPacks/@xpack-3rd-party/arm-cmsis-core/5.4.0-6",
+              "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/arm-cmsis-core"
+            },
+            {
+              "key": "raspberrypi-pico-sdk",
+              "source": "/home/dan/.local/xPacks/@xpack-3rd-party/raspberrypi-pico-sdk/1.5.1-1",
+              "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/raspberrypi-pico-sdk"
+            },
+            {
+              "key": "arm-cmsis",
+              "source": "/home/dan/.local/xPacks/@xpacks/arm-cmsis/4.5.0-7",
+              "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpacks/arm-cmsis"
+            }
+          ],
+          "startedAt": "2026-11-14T12:42:43.022Z",
+          "finishedAt": "2026-11-14T12:43:04.615Z",
+          "logDir": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs",
+          "buildTreeCleaned": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "name": "aarch64-rpi-zero-2w-cmake-gcc-debug",
+        "project": "micro-os-plus-iii-aarch64",
+        "platform": "aarch64-rpi-zero-2w",
+        "status": "pass",
+        "phase": "build",
+        "configure": {
+          "exitCode": 0,
+          "log": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs/aarch64-rpi-zero-2w-cmake-gcc-debug.configure.log"
+        },
+        "build": {
+          "exitCode": 0,
+          "log": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs/aarch64-rpi-zero-2w-cmake-gcc-debug.build.log"
+        },
+        "actual": {
+          "CMAKE_C_COMPILER": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gcc",
+          "CMAKE_CXX_COMPILER": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-g++"
+        },
+        "expected": {
+          "compiler": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-gcc",
+          "cxx": "/home/dan/.local/xPacks/@xpack-dev-tools/aarch64-none-elf-gcc/15.2.1-1.1.1/.content/bin/aarch64-none-elf-g++"
+        },
+        "compilerMismatch": [],
+        "xpackLinks": [
+          {
+            "key": "libucontext",
+            "source": "/home/dan/.local/xPacks/@xpack-3rd-party/libucontext/1.2.0-5",
+            "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/libucontext"
+          },
+          {
+            "key": "arm-cmsis-core",
+            "source": "/home/dan/.local/xPacks/@xpack-3rd-party/arm-cmsis-core/5.4.0-6",
+            "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/arm-cmsis-core"
+          },
+          {
+            "key": "raspberrypi-pico-sdk",
+            "source": "/home/dan/.local/xPacks/@xpack-3rd-party/raspberrypi-pico-sdk/1.5.1-1",
+            "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpack-3rd-party/raspberrypi-pico-sdk"
+          },
+          {
+            "key": "arm-cmsis",
+            "source": "/home/dan/.local/xPacks/@xpacks/arm-cmsis/4.5.0-7",
+            "target": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/xpacks/@xpacks/arm-cmsis"
+          }
+        ],
+        "startedAt": "2026-11-14T12:42:43.022Z",
+        "finishedAt": "2026-11-14T12:43:04.615Z",
+        "logDir": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/build-logs",
+        "buildTreeCleaned": true
+      }
+    ],
+    "status": "pass",
+    "complete": true,
+    "verifiedAt": "2026-11-14T12:43:04.615Z"
+  }
+}

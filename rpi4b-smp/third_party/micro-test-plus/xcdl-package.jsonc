@@ -1,0 +1,84 @@
+{
+  "$schema": "https://xpack.github.io/xcdl/schemas/xcdl-2.0.0.json",
+  "minimumXcdlRequired": "2.0.0",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2022-2026 Liviu Ionescu. All rights reserved.",
+  "cdlComponents": [
+    {
+      "id": "micro-os-plus.micro-test-plus",
+      "display": "µTest++ Testing Framework",
+      "description": "µTest++, a lightweight testing framework for embedded platforms",
+      "publicIncludeFolders": [
+        "include"
+      ],
+      "sourceFiles": [
+        "src/runner.cpp",
+        "src/runner-options.cpp",
+        "src/counters.cpp",
+        "src/check-result.cpp",
+        "src/expression-formatter.cpp",
+        "src/reporter.cpp",
+        "src/reporter-human.cpp",
+        "src/reporter-tap.cpp",
+        "src/test.cpp",
+        "src/stopwatch.cpp",
+        "src/deprecated.cpp",
+        "src/utility.cpp"
+      ],
+      "dependencies": [],
+      "optionalDependencies": [
+        "micro-os-plus.diag.trace"
+      ],
+      "generatedFile": {
+        "type": "c-header",
+        "filePath": "{{buildFolderPath}}/generated/include/micro-os-plus/micro-test-plus-defines.h"
+      },
+      // "defaultDefine": "MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED",
+      "cdlOptions": [
+        {
+          "id": "trace",
+          "display": "Enable trace in µTest++",
+          "description": "Display trace messages in the µTest++ Testing Framework when TRACE is enabled",
+          "requires": "isEnabled('micro-os-plus.diag.trace')",
+          "defaultValue": false
+          // "defaultDefine": "MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_ENABLED"
+        },
+        {
+          "id": "trace-constructors",
+          "display": "Enable trace in constructors and destructors in µTest++",
+          "description": "Display trace messages in constructors and destructors in the µTest++ Testing Framework when TRACE is enabled",
+          "requires": "isEnabled('trace')"
+          // "defaultDefine": "MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED"
+        },
+        {
+          "id": "deprecated",
+          "display": "Enable deprecated features in µTest++",
+          "description": "Make the deprecated definitions of the µTest++ Testing Framework (the old names of the functions, classes and members, the overloaded operators, the user-defined literals and the type wrappers) available; without it, the applications that still use them fail to compile, with it, the compiler reports their use as deprecated; the macro must be defined for the library sources too"
+          // "defaultDefine": "MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED"
+        }
+      ],
+      "cdlArtefacts": [
+        {
+          "id": "static-library",
+          "display": "Static Library",
+          "description": "Static library with the µTest++ Testing Framework",
+          "type": "staticLibrary",
+          "fileName": "micro-test-plus",
+          "dependencies": [
+            "micro-os-plus.micro-test-plus"
+          ]
+        },
+        {
+          "id": "objects-library",
+          "display": "Object Files",
+          "description": "Object files with the µTest++ Testing Framework",
+          "type": "objectFiles",
+          "folderName": "micro-test-plus",
+          "dependencies": [
+            "micro-os-plus.micro-test-plus"
+          ]
+        }
+      ]
+    }
+  ]
+}
