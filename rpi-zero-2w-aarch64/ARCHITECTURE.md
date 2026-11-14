@@ -3,7 +3,7 @@
 <p class="subtitle">A plain-English walk from power-on to the CTest result: the folders, the files, the startup code, the test framework and the runner</p>
 
 **Board:** Raspberry Pi Zero 2 W, BCM2837, four Cortex-A53 cores, AArch64<br>
-**Workspace:** `/home/dan/Work/new/rpi-zero-2w-aarch64`<br>
+**Workspace:** `/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64`<br>
 **Configuration:** `aarch64-rpi-zero-2w-cmake-gcc-debug`<br>
 **CTest cases:** eight — four tests, each in a `qemu` and a `hwd` variant
 
@@ -1218,7 +1218,7 @@ hand-maintained tab file anymore.
 ## 13.1 Commands
 
 ```bash
-cd /home/dan/Work/new/rpi-zero-2w-aarch64/tests
+cd /home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64/tests
 
 ./run.sh list                     # what CTest has
 ./run.sh                          # qemu cases of the selected tests

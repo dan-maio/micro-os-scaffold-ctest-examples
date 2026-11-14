@@ -92,7 +92,7 @@ From the scaffold project:
 
 ```bash
 cd /home/dan/Work/micro-os-scaffold
-node bin/scaffold.js /home/dan/Work/new \
+node bin/scaffold.js /home/dan/Work/micro-os-scaffold-ctest-examples \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select 4.7.2 \
   --micro-test-plus /path/to/micro-test-plus \
