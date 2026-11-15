@@ -12,7 +12,7 @@ This document answers three questions, in this order:
 
 1. **What is StateOS/stdc++?** — the package, the GCC contract it implements, and what it assumes about its kernel.
 2. **How was it ported to µOS++ III?** — the design, every file, and the problems that had to be solved on the way.
-3. **How is it used in a test and in CTest?** — the CMake target, a µTest++ test, the QEMU and hardware CTest cases, and what a passing run looks like.
+3. **How is it used in a test and in CTest?** — the CMake target, a µTest++ test, the QEMU and hardware CTest cases, what a passing run looks like, and how to start a new project from scratch with `micro-os-scaffold`.
 
 It is written for someone who has to maintain this port, adapt it to another board, or write a new test with it. It is not a libstdc++ tutorial; it explains only the parts the port touches.
 
@@ -1087,7 +1087,689 @@ The UART is **not** opened by the runner. A terminal on the board's USB-serial a
 
 If the test uses its own `main()` and the `mtp_board` support, no further change is needed: the directory listing is the registration.
 
-# 29. Porting the library to another board
+# 29. Starting a new project from scratch
+
+This chapter builds a standalone project, `<project>/`, from an empty folder, using
+`micro-os-scaffold`, and ends with the same `smp_test4` CTest cases this repository
+runs. The result is not a copy of `rpi4b-smp`; it is the sequence that produces it.
+
+The example target is the Raspberry Pi 4 B (`aarch64-rpi4b`, four Cortex-A72
+cores). The same steps work for any board the scaffold discovers; only the
+selection token and the board's runner change.
+
+## 29.1 Prerequisites
+
+| Piece | What is needed |
+| --- | --- |
+| Node.js | 18 or newer; the scaffolder uses only the standard library |
+| Source workspace | a folder holding the sibling `micro-os-plus-iii-smp` and `micro-os-plus-iii-aarch64` repositories (here `/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`) |
+| Cross toolchain | `aarch64-none-elf-gcc` 15.2 (an xPack), CMake, Ninja |
+| µTest++ | a folder or a git URL for `micro-test-plus` |
+| QEMU (optional) | `qemu-system-aarch64` 9.x for the emulated cases |
+| OpenOCD (optional) | 0.12 for the hardware cases, plus a CMSIS-DAP probe |
+
+The scaffolder finds the tools and records their absolute paths in
+`scaffold.json`. The generated `tests/scripts/env.sh` puts them on `PATH` for
+`run.sh`; nothing is hard-coded in the CMake files.
+
+## 29.2 Find the board and the test to start from
+
+`discover` is read-only and prints exactly the tokens `--select` accepts:
+
+```bash
+cd /home/dan/Work/micro-os-scaffold
+
+node bin/scaffold.js discover \
+  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github
+```
+
+The part that matters here:
+
+```text
+  3. micro-os-plus-iii-aarch64 v0.1.0  [port, aarch64; 3 boards, 56 tests]
+      3.1    aarch64-rpi-zero-2w  (board rpi-zero-2w, 18 tests)
+      3.2    aarch64-rpi3b  (board rpi3b, 16 tests)
+      3.3    aarch64-rpi4b  (board rpi4b, 22 tests)
+             3.3.1    clock-test
+             3.3.2    cmsis-os-validator
+             ...
+             3.3.10   smp_test0
+             3.3.11   smp_test1
+             3.3.12   smp_test2
+             3.3.13   smp_test3
+             3.3.14   smp_test4
+             ...
+```
+
+Three selection shapes are useful:
+
+| Token | Meaning |
+| --- | --- |
+| `3.3` | the whole board: all 22 Raspberry Pi 4 B tests (heavy) |
+| `3.3.1` | one test, `clock-test`; the smallest workspace that still builds the board (used below) |
+| `3.3.10` | one SMP test (`smp_test0`) if the starting point should already be multi-core |
+
+> The source workspace has its own `smp_test4`, a load-balancing demo. It is
+> **not** the test in this document. Selecting `3.3.1` keeps the workspace
+> small; the stdc++ test is added below as a new directory with the same name.
+
+## 29.3 Scaffold the workspace
+
+```bash
+node bin/scaffold.js /home/dan/Work/rpi4b-stdcpp \
+  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
+  --select 3.3.1 \
+  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --yes
+```
+
+- `--select 3.3.1` is the lean default: the complete kernel, the selected port,
+  the selected test and the harness files it needs.
+- `--micro-test-plus` copies the framework into `third_party/micro-test-plus/`,
+  adds the board support under `micro-os-plus-iii-aarch64/test/mtp/`, creates the
+  `uos-micro-test-plus` INTERFACE target, adds the `mtp-*` starters
+  (`mtp-example`, `mtp-args`, `mtp-smp`, `mtp-eth-net`) and patches the runners
+  so a µTest++ image receives `--output-file`.
+- `--yes` accepts the detected tools non-interactively.
+- Add `--no-build` to skip the verification build. Without it the tool runs the
+  full CMake/Ninja build once, records the result in `scaffold.json`, then
+  removes the build tree (the log stays in `build-logs/`).
+
+On the first run the tool writes `scaffold.json`; later runs read it as the
+source of truth. `scaffold.json` records the source root, the selection, the
+tool paths, the µTest++ integration, the runner patches and the expected CTest
+names.
+
+## 29.4 What the scaffold created
+
+```text
+rpi4b-stdcpp/
+├── micro-os-plus-iii-smp/                  the kernel (complete)
+├── micro-os-plus-iii-aarch64/              the AArch64 port (lean)
+│   ├── test/boards/rpi4b/                  board sources, linker, hw.sh, OpenOCD cfg
+│   └── test/rpi4b/
+│       ├── clock-test/                     the selected test
+│       ├── mtp-example/ mtp-args/          µTest++ starters
+│       ├── mtp-smp/ mtp-eth-net/
+│       ├── include/ src/                   board test support
+│       └── tests.cmake                     the per-test hooks
+├── tests/
+│   ├── CMakeLists.txt cmake/ platforms/aarch64-rpi4b/
+│   ├── run.sh                              the one entry point
+│   └── scripts/env.sh                      generated tool paths
+├── third_party/micro-test-plus/            µTest++ 6.0.0
+├── scaffold.json                           the source of truth
+└── README.md HOW-TO-RUN.md build-logs/
+```
+
+The workspace builds as it is:
+
+```bash
+cd /home/dan/Work/rpi4b-stdcpp/tests
+./run.sh build
+./run.sh clock-test        # the QEMU case
+./run.sh list
+```
+
+## 29.5 Put the stdc++ library in `third_party`
+
+A standalone project has no repository-level `third_party/`, so copy the library
+in (or make it a submodule of the project):
+
+```bash
+mkdir -p /home/dan/Work/rpi4b-stdcpp/third_party
+cp -a /home/dan/Work/micro-os-scaffold-ctest-examples/third_party/stateos-stdc++ \
+      /home/dan/Work/rpi4b-stdcpp/third_party/
+```
+
+The result is:
+
+```text
+rpi4b-stdcpp/third_party/stateos-stdc++
+├── CMakeLists.txt
+├── include/{barrier,latch,semaphore,bits/gthr-default.h,inc/*.hh}
+├── src/{gthread,thread,mutex,condition_variable,future,chrono,emutls}.cc
+└── README.md LICENSE src/COPYING3 src/COPYING.RUNTIME
+```
+
+This repository keeps one canonical copy at its root and a relative symlink in
+`rpi4b-smp/third_party/`; a standalone project needs neither, because the first
+path the CMake hook tries is `<project>/third_party/stateos-stdc++`.
+
+## 29.6 Add the `smp_test4` directory
+
+```bash
+mkdir -p /home/dan/Work/rpi4b-stdcpp/micro-os-plus-iii-aarch64/test/rpi4b/smp_test4
+```
+
+Four things are needed for a µTest++ test: `main.cpp`, one or more suite files,
+the `stateos-stdc++` target and the `uos-micro-test-plus` library. The suites are
+listed in the table after the code; the complete set is in this repository's
+`smp_test4/`.
+
+### `main.cpp`
+
+```c++
+/*
+ * smp_test4 -- the StateOS stdc++ package adapted to µOS++ III SMP.
+ *
+ * The libstdc++ parts a bare-metal target does not get from the toolchain
+ * (gthr, std::thread, future/promise/async, chrono clocks, emulated TLS, and
+ * C++20 barrier/latch/semaphore), tested on the Raspberry Pi 4 B with all four
+ * cores in the scheduler.
+ *
+ *   01 - std::thread and TLS   create/join/detach, jthread, ids, sleep, thread_local
+ *   02 - promise and future    value, void, wait_for status, shared_future
+ *   03 - packaged_task, async  deferred vs async, set_value_at_thread_exit
+ *   04 - mutexes and call_once lock_guard, timed, recursive, once
+ *   05 - sync primitives       condition_variable, semaphores, latch, barrier
+ *   06 - chrono                the two clocks, sleeps, duration conversions
+ *
+ * Each suite lives in its own suite-*.cpp file and registers itself; there is
+ * no list here to keep in step with them.
+ */
+#include <mtp_board.hpp>
+
+#include <cstdio>
+
+#if !defined(MTP_HAS_SMP_BOOT) || !MTP_HAS_SMP_BOOT || OS_NCPU < 2
+#error "smp_test4 needs a multi-core build with the board's SMP boot helpers"
+#endif
+
+int
+os_main (int argc, char* argv[])
+{
+  mtp_board::start ("smp_test4");
+  mtp_board::release_cores ();
+  std::printf ("# stdc++: StateOS stdc++ adapted to µOS++ III, %u cores\n",
+               static_cast<unsigned> (OS_NCPU));
+  return mtp_board::run (argc, argv);
+}
+
+#include <mtp_startup.hpp>
+```
+
+### `suite-thread.cpp`
+
+```c++
+// 01 - std::thread and TLS: join, detach, jthread, ids, yield, sleep, thread_local,
+// on the StateOS stdc++ gthread layer.
+#include <mtp_board.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <thread>
+
+namespace
+{
+  using namespace std::chrono_literals;
+
+  std::atomic<int> g_counter{ 0 };
+  thread_local int g_tls = 0;
+  std::atomic<int> g_tls_ok{ 0 };
+
+  // Bounded wait that does not need the thread to be joined first: sleep in
+  // one-tick steps, so the scheduler on the other cores keeps running.
+  bool
+  wait_flag (const std::atomic<bool>& flag, unsigned ms = 2000)
+  {
+    for (unsigned i = 0; i < ms; ++i)
+      {
+        if (flag.load (std::memory_order_acquire))
+          {
+            return true;
+          }
+        std::this_thread::sleep_for (1ms);
+      }
+    return flag.load (std::memory_order_acquire);
+  }
+} // namespace
+
+mt::static_suite suite_thread{
+  "01 - std::thread and TLS", mtp_board::runner (),
+  [] (mt::suite& ts) {
+    ts.test ("join: a thread runs, its writes are visible after join ()",
+             [] (auto& t) {
+               constexpr int increments = 4000;
+               g_counter = 0;
+               std::thread th ([]
+                               {
+                                 for (int i = 0; i < increments; ++i)
+                                   {
+                                     g_counter.fetch_add (
+                                         1, std::memory_order_relaxed);
+                                   }
+                               });
+               t.expect (th.joinable ()) << "joinable before join ()";
+               th.join ();
+               t.expect (mt::eq (g_counter.load (), increments))
+                   << "every increment visible after join ()";
+               t.expect (!th.joinable ()) << "not joinable after join ()";
+             });
+
+    ts.test ("detach: the thread runs on without join ()", [] (auto& t) {
+      std::atomic<bool> ran{ false };
+      std::thread th ([&ran] { ran.store (true, std::memory_order_release); });
+      t.expect (th.joinable ()) << "joinable before detach ()";
+      th.detach ();
+      t.expect (!th.joinable ()) << "not joinable after detach ()";
+      t.expect (wait_flag (ran)) << "the detached thread ran";
+    });
+
+    ts.test ("get_id (): another thread has a distinct, stable id",
+             [] (auto& t) {
+               const std::thread::id main_id = std::this_thread::get_id ();
+               std::thread::id other_id;
+               std::atomic<bool> stable{ false };
+
+               std::thread th ([&]
+                               {
+                                 other_id = std::this_thread::get_id ();
+                                 std::this_thread::yield ();
+                                 stable.store (std::this_thread::get_id ()
+                                                   == other_id,
+                                               std::memory_order_release);
+                               });
+               th.join ();
+
+               t.expect (!(main_id == other_id))
+                   << "the worker's id differs from the runner's";
+               t.expect (stable.load ()) << "the worker's id is stable";
+               t.expect (main_id == std::this_thread::get_id ())
+                   << "the runner's id is stable";
+             });
+
+    ts.test ("hardware_concurrency () reports the board's cores",
+             [] (auto& t) {
+               t.expect (mt::eq (static_cast<unsigned> (
+                                     std::thread::hardware_concurrency ()),
+                                 static_cast<unsigned> (OS_NCPU)))
+                   << "one thread per core";
+             });
+
+    ts.test ("sleep_for () lasts at least the requested time", [] (auto& t) {
+      const auto before = std::chrono::steady_clock::now ();
+      std::this_thread::sleep_for (20ms);
+      const auto after = std::chrono::steady_clock::now ();
+      const auto elapsed
+          = std::chrono::duration_cast<std::chrono::milliseconds> (after
+                                                                  - before)
+                .count ();
+      t.expect (elapsed >= 15) << "slept at least 15 ms (the tick is 1 ms)";
+    });
+
+    ts.test ("thread_local: one instance per thread (emulated TLS)",
+             [] (auto& t) {
+               g_tls = 1; // the runner's own copy
+               g_tls_ok = 0;
+
+               auto worker = [] (int value) {
+                 g_tls = value;
+                 std::this_thread::sleep_for (5ms);
+                 if (g_tls == value)
+                   {
+                     g_tls_ok.fetch_add (1, std::memory_order_relaxed);
+                   }
+               };
+
+               std::thread a (worker, 10);
+               std::thread b (worker, 20);
+               a.join ();
+               b.join ();
+
+               t.expect (mt::eq (g_tls_ok.load (), 2))
+                   << "each thread saw its own value";
+               t.expect (mt::eq (g_tls, 1))
+                   << "the runner's value was untouched";
+               g_tls = 0;
+             });
+
+    ts.test ("jthread: joins at scope exit, the stop token reaches the worker",
+             [] (auto& t) {
+               std::atomic<bool> started{ false };
+               std::atomic<bool> stopped{ false };
+               {
+                 std::jthread worker ([&] (std::stop_token token) {
+                   started.store (true, std::memory_order_release);
+                   while (!token.stop_requested ())
+                     {
+                       std::this_thread::sleep_for (1ms);
+                     }
+                   stopped.store (true, std::memory_order_release);
+                 });
+
+                 t.expect (wait_flag (started)) << "the jthread started";
+                 worker.request_stop ();
+               } // the destructor joins here
+               t.expect (stopped.load ())
+                   << "the worker saw the stop request, and the join completed";
+             });
+  }
+};
+```
+
+### `suite-promise.cpp`
+
+```c++
+// 02 - promise and future: the core of the C++11 future library on top of
+// the gthread layer.
+#include <mtp_board.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <future>
+#include <thread>
+#include <utility>
+
+namespace
+{
+  using namespace std::chrono_literals;
+
+  bool
+  wait_flag (const std::atomic<bool>& flag, unsigned ms = 2000)
+  {
+    for (unsigned i = 0; i < ms; ++i)
+      {
+        if (flag.load (std::memory_order_acquire))
+          {
+            return true;
+          }
+        std::this_thread::sleep_for (1ms);
+      }
+    return flag.load (std::memory_order_acquire);
+  }
+} // namespace
+
+mt::static_suite suite_promise{
+  "02 - promise and future", mtp_board::runner (),
+  [] (mt::suite& ts) {
+    ts.test ("promise<int>: the value set by a thread reaches get ()",
+             [] (auto& t) {
+               std::promise<int> promise;
+               std::future<int> future = promise.get_future ();
+               t.expect (future.valid ()) << "a future is attached";
+
+               std::thread th ([p = std::move (promise)] () mutable {
+                 std::this_thread::sleep_for (5ms);
+                 p.set_value (41 + 1);
+               });
+
+               t.expect (mt::eq (future.get (), 42))
+                   << "get () waited for the value";
+               th.join ();
+               t.expect (!future.valid ()) << "get () releases the state";
+             });
+
+    ts.test ("promise<void>: a value-less handshake", [] (auto& t) {
+      std::promise<void> promise;
+      std::future<void> future = promise.get_future ();
+      std::atomic<bool> started{ false };
+
+      std::thread th ([&]
+                      {
+                        started.store (true, std::memory_order_release);
+                        std::this_thread::sleep_for (5ms);
+                        promise.set_value ();
+                      });
+
+      t.expect (wait_flag (started)) << "the setter is running";
+      future.wait ();
+      t.expect (future.valid ()) << "wait () does not consume the state";
+      th.join ();
+    });
+
+    ts.test ("future_status: timeout before the value, ready after",
+             [] (auto& t) {
+               std::promise<int> promise;
+               std::future<int> future = promise.get_future ();
+
+               t.expect (future.wait_for (1ms) == std::future_status::timeout)
+                   << "nothing is ready yet";
+
+               promise.set_value (7);
+
+               t.expect (future.wait_for (1ms) == std::future_status::ready)
+                   << "the value is ready";
+               t.expect (mt::eq (future.get (), 7)) << "and readable";
+             });
+
+    ts.test ("shared_future: two threads read the same value",
+             [] (auto& t) {
+               std::promise<int> promise;
+               std::future<int> future = promise.get_future ();
+               std::shared_future<int> shared = future.share ();
+               std::atomic<int> sum{ 0 };
+
+               std::thread a ([shared, &sum] {
+                 sum.fetch_add (shared.get (), std::memory_order_relaxed);
+               });
+               std::thread b ([shared, &sum] {
+                 sum.fetch_add (shared.get (), std::memory_order_relaxed);
+               });
+
+               promise.set_value (21);
+               a.join ();
+               b.join ();
+
+               t.expect (mt::eq (sum.load (), 42))
+                   << "both readers saw 21";
+             });
+
+    ts.test ("a promise moved between threads keeps its future",
+             [] (auto& t) {
+               std::promise<int> promise;
+               std::future<int> future = promise.get_future ();
+
+               // Move the promise into a lambda, then move it again between
+               // the two threads through a shared slot.
+               std::thread producer ([p = std::move (promise)] () mutable {
+                 std::this_thread::sleep_for (2ms);
+                 p.set_value (99);
+               });
+
+               t.expect (mt::eq (future.get (), 99)) << "the moved promise set";
+               producer.join ();
+             });
+  }
+};
+```
+
+The remaining suites are the same shape:
+
+| File | Suite title | What it covers |
+| --- | --- | --- |
+| `suite-future.cpp` | `03 - packaged_task and async` | `packaged_task`, `launch::async` vs `deferred`, `set_value_at_thread_exit` |
+| `suite-mutex.cpp` | `04 - mutexes and call_once` | `lock_guard`, `timed_mutex`, `recursive_mutex`, `call_once`, `unique_lock` |
+| `suite-sync.cpp` | `05 - condition variable and C++20 sync` | `condition_variable`, `notify_all_at_thread_exit`, semaphores, `latch`, `barrier`, `shared_mutex` |
+| `suite-chrono.cpp` | `06 - chrono` | both clocks, sleeps, duration conversions |
+
+Copy them from this repository if the whole set is wanted:
+
+```bash
+cp /home/dan/Work/micro-os-scaffold-ctest-examples/rpi4b-smp/micro-os-plus-iii-aarch64/test/rpi4b/smp_test4/*.cpp \
+   /home/dan/Work/rpi4b-stdcpp/micro-os-plus-iii-aarch64/test/rpi4b/smp_test4/
+```
+
+## 29.7 Wire it into CMake and the runner
+
+### 29.7.1 The `stateos-stdc++` INTERFACE target
+
+Add this block to `micro-os-plus-iii-aarch64/test/rpi4b/tests.cmake`, before the
+µTest++ block:
+
+```cmake
+# ---- stateos-stdc++ ---------------------------------------------------------
+# The StateOS stdc++ package adapted to µOS++ III. Its include directory goes
+# BEFORE the toolchain's C++ headers: it provides <bits/gthr-default.h> and the
+# C++20 <barrier>/<latch>/<semaphore>.
+set (_stateos_stdcpp
+     "${CMAKE_CURRENT_LIST_DIR}/../../../third_party/stateos-stdc++")
+if (NOT IS_DIRECTORY "${_stateos_stdcpp}")
+  message (FATAL_ERROR "stateos-stdc++ not found at ${_stateos_stdcpp}")
+endif ()
+if (NOT TARGET stateos-stdc++)
+  add_subdirectory ("${_stateos_stdcpp}"
+                    "${CMAKE_BINARY_DIR}/stateos-stdc++-bin")
+endif ()
+```
+
+### 29.7.2 The library hook
+
+`tests.cmake` already has a `board_test_libs()` function. Add the branch at its
+top:
+
+```cmake
+function (board_test_libs _app _out)
+  if (_app STREQUAL "smp_test4")
+    set (${_out} stateos-stdc++ uos-micro-test-plus PARENT_SCOPE)
+    return ()
+  endif ()
+  ...
+endfunction ()
+```
+
+`uos-micro-test-plus` is defined later in the same file by the
+`--micro-test-plus` block, so the hook is called after the whole file has been read and the
+target exists.
+
+### 29.7.3 The default CTest selection
+
+`tests/run.sh` lists the cases a plain `./run.sh` runs. Add the two new names to
+the configuration's `SELECTED` array:
+
+```bash
+SELECTED=('aarch64-rpi4b-clock-test-qemu' 'aarch64-rpi4b-clock-test-hwd' \
+          ... \
+          'aarch64-rpi4b-smp_test4-qemu' 'aarch64-rpi4b-smp_test4-hwd')
+```
+
+The CTest cases exist either way — the directory listing registers them. The
+array only decides what runs by default.
+
+### 29.7.4 A TAP report for a non-`mtp-*` name
+
+The runners write a complete TAP file only for names matching `mtp-*`. Extend
+the condition in the three generated runners:
+
+```bash
+# micro-os-plus-iii-smp/test_smpl/run-qemu.sh and run-host.sh
+if [[ "$app" == mtp-* || "$app" == smp_test4 ]]; then
+  ...
+fi
+```
+
+```bash
+# micro-os-plus-iii-aarch64/test/boards/rpi4b/hw.sh
+if [[ "$1" == mtp-* || "$1" == smp_test4 ]]; then
+  ...
+fi
+```
+
+Without this the test still runs and prints its TAP to the console; it just does
+not write `.qemu-logs/smp_test4.tap` or `.hw-logs/smp_test4.tap`.
+
+### 29.7.5 Recording the additions
+
+`scaffold.json` is the source of truth. If `smp_test4` should be part of the
+default set after a re-scaffold, add the two CTest names to
+`microTestPlus.boards[0].ctest` and note the runner patch in `patches` (this
+repository's `rpi4b-smp/scaffold.json` is the example). The test directory and
+the CMake hook are not generated files; keep them in version control.
+
+## 29.8 Build and run under QEMU
+
+```bash
+cd /home/dan/Work/rpi4b-stdcpp/tests
+
+./run.sh build             # configure and build every target
+./run.sh list              # smp_test4-qemu / -hwd are registered
+./run.sh smp_test4         # build, then the QEMU case
+```
+
+Expected (the CTest number depends on the directory order, the rest does not):
+
+```text
+11: # smp_test4, under QEMU
+11: # cores: c1=3 c2=3 c3=3, 0 ms
+11: # stdc++: StateOS stdc++ adapted to µOS++ III, 4 cores
+11: # Built with GCC 15.2.1 20251203, with FP, no exceptions
+11: TAP version 14
+...
+11: # { total: 75 checks passed, 0 failed, in 37 test cases, 7 test suites }
+11: RESULT: PASS (smp_test4: all µTest++ checks passed, 106 ms)
+1/1 Test #11: aarch64-rpi4b-smp_test4-qemu .....   Passed    0.21 sec
+```
+
+The complete report is
+
+```text
+tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.qemu-logs/smp_test4.tap
+```
+
+If the first build fails at the `static_assert`s in `src/gthread.cc`, the kernel
+objects outgrew the 256-byte storage; raise `__GTHREAD_STORAGE_BYTES` in
+`include/bits/gthr-default.h` (chapter 7). If it fails with `std::mutex` not
+declared, the library target is not linked or its include directory is not
+first (chapter 19).
+
+## 29.9 Run on the board
+
+The scaffold registers both variants for every test directory. With a
+CMSIS-DAP probe attached:
+
+```bash
+./run.sh --hwd-only smp_test4
+```
+
+`hw.sh` resets the board through the BCM2711 PM watchdog, loads
+`smp_test4-hwd` over JTAG, starts core 0, releases the other cores from the
+armstub spin-table and reads the verdict through semihosting (chapter 26).
+Expected:
+
+```text
+12: RESULT: PASS (smp_test4: all µTest++ checks passed, 24572 ms)
+12: [hw] smp_test4 PASSED — power-cycle the board before the next test.
+1/1 Test #12: aarch64-rpi4b-smp_test4-hwd ......   Passed   65.63 sec
+```
+
+The full report is `.hw-logs/smp_test4.tap`.
+
+## 29.10 Keeping the new project reproducible
+
+Three kinds of files are involved, and they have different lifetimes:
+
+| Kind | Examples | Where it belongs |
+| --- | --- | --- |
+| generated | `tests/`, the lean port, `scaffold.json`, `env.sh` | re-created by the scaffolder |
+| added | `third_party/stateos-stdc++/`, the `smp_test4/` directory, the `tests.cmake` hook | the project's version control |
+| patched | the `smp_test4` condition in the three runner scripts | record in `scaffold.json`'s `patches` |
+
+For a project that must survive a re-scaffold, keep the added files in the
+source workspace as well:
+
+1. put `smp_test4/` under `micro-os-plus-iii-aarch64/test/rpi4b/` in the source
+   workspace — replacing the existing load-balancing demo of that name, or using
+   another directory name and the matching token — so `discover` lists it and
+   `--select` can choose it;
+2. add the `stateos-stdc++` block and the `board_test_libs()` branch to that
+   port's `tests.cmake`;
+3. keep the library in a location the source build can reach, or copy it into
+   each generated workspace as above.
+
+Then a fresh scaffold selects the test directly:
+
+```bash
+node bin/scaffold.js /home/dan/Work/rpi4b-stdcpp-2 \
+  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
+  --select aarch64-rpi4b.smp_test4 \
+  --micro-test-plus ... --yes
+```
+
+> Lean mode may prune port files that no selected test needs. A hand-added test
+> directory that is not part of the source workspace is therefore at risk on a
+> re-scaffold; keeping it in the source repo (step 1) removes that risk.
+
+# 30. Porting the library to another board
 
 The library is board-independent; the board facts are in the port and in three constants in the library:
 
@@ -1106,7 +1788,7 @@ Recipe:
 5. Run the C++20 sync test: it is where the barrier/latch semantics and the semaphore counter limit show up.
 6. Check the memory: each mutex/condition variable is 256 bytes, each thread 16 KiB of stack.
 
-# 30. Troubleshooting
+# 31. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
@@ -1122,7 +1804,7 @@ Recipe:
 | Hardware: test timeout | the image did not load | check the probe firmware and `UOS_HW_ADAPTER_KHZ` |
 | TAP file missing | the runner's `mtp-*` condition did not include the app | the patched runners include `smp_test4` |
 
-# 31. Validation log
+# 32. Validation log
 
 The port was validated in this order; each step found something the previous one could not.
 
@@ -1133,7 +1815,7 @@ The port was validated in this order; each step found something the previous one
 5. **Hardware run** on the Raspberry Pi 4 B, CMSIS-DAP probe, all four cores: 75 checks, 0 failed, 24.6 s, CTest 65.6 s.
 6. **Regression run:** the workspace's other five QEMU cases still pass.
 
-# 32. File inventory and commands
+# 33. File inventory and commands
 
 ```text
 Repository
@@ -1163,13 +1845,14 @@ cat tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.qemu
 cat tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.hw-logs/smp_test4.tap
 ```
 
-# 33. Summary
+# 34. Summary
 
 - **StateOS/stdc++** is the gthread layer plus the non-inline parts of `<thread>`, `<mutex>`, `<condition_variable>`, `<future>`, `<chrono>`, emulated TLS, and C++20 `barrier`/`latch`/`semaphore`, written against a small RTOS API.
 - **The port** keeps the package's structure, replaces the StateOS kernel primitives with µOS++ ones, hides the kernel headers behind opaque storage so `<mutex>` and `os.h` do not include each other, converts absolute times to relative ticks, allocates threads from the free store, and implements TLS without `_GLIBCXX_HAVE_TLS`.
 - **The test** (`smp_test4`) is a µTest++ application with seven suites, 75 checks and 37 cases, running on four cores. It is built by the same directory-listing rule as every other board test and registered with CTest as `aarch64-rpi4b-smp_test4-qemu` and `-hwd`.
 - **The CTest cases** build the library into the image, run it under QEMU or over CMSIS-DAP on the board, read the `RESULT:` line, and keep the complete TAP report under the build tree.
 - **Both runs pass:** 75/75 checks on QEMU (0.21 s) and on the Raspberry Pi 4 B (65.6 s CTest, 24.6 s image time).
+- **A new project** is one `micro-os-scaffold` command, the library in `third_party/`, the test directory, two CMake hooks and one runner condition (chapter 29).
 
 ---
 
