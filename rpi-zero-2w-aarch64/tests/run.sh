@@ -233,7 +233,7 @@ if [[ ${#WANTED[@]} -gt 0 ]]; then
       [[ -n "$name" ]] && NAMES+=("$name")
     done <<< "$found"
   done
-elif [[ "$CMD" == "all" || "$HWD" == "1" ]]; then
+elif [[ "$CMD" == "all" ]]; then
   while IFS= read -r name; do
     [[ -n "$name" ]] && NAMES+=("$name")
   done <<< "$REGISTERED"

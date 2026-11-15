@@ -747,15 +747,18 @@ also supplies the suite's `os-app-config.h` and, where needed, a strong
 `main()`/startup hooks. The resulting CTest case is still
 `<platform>-<app>-<variant>`.
 
+---
+
 ## 10.3 Third-party libraries a test brings
 
 A test that needs more than the kernel and the harness names an INTERFACE
-library in `board_test_libs()`, next to `uos-micro-test-plus`. Two are in use:
+library in `board_test_libs()`, next to `uos-micro-test-plus`. The scaffolder
+can add two:
 
-| Target | Where | What |
-| --- | --- | --- |
-| `uos-micro-test-plus` | `third_party/micro-test-plus/` | the framework and the board support |
-| `stateos-stdc++` | `third_party/stateos-stdc++/` | the C++ standard-library layer (gthr, `std::thread`, future/promise, chrono, TLS, C++20 `barrier`/`latch`/`semaphore`), used by `smp_test4` |
+| Target | Where | Added by | What |
+| --- | --- | --- | --- |
+| `uos-micro-test-plus` | `third_party/micro-test-plus/` | `--micro-test-plus` | the framework and the board support; linked to every `mtp-*` test |
+| `stateos-stdc++` | `third_party/stateos-stdc++/` | `--stdcpp` | the C++ standard-library layer (gthr, `std::thread`, future/promise, chrono, TLS, C++20 `barrier`/`latch`/`semaphore`); linked to `mtp-stdcpp`, and to any test whose hook branch returns it |
 
 `stateos-stdc++` puts its include directory **before** the toolchain's C++
 headers (`target_include_directories (... BEFORE INTERFACE ...)`). That is load
@@ -773,9 +776,17 @@ bearing:
 Its `_GLIBCXX_HAS_GTHREADS=1` is an INTERFACE define: `c++config.h` leaves it
 undefined on the bare-metal target. The library's sources are INTERFACE
 sources, so each test compiles its own copy with that test's defines and
-include path.
+include path. A branch for a test of your own goes **first** in the hook (the
+generated `mtp-*` branch returns early):
 
----
+```cmake
+if (_app STREQUAL "my-test")
+  set (${_out} stateos-stdc++ uos-micro-test-plus PARENT_SCOPE)
+  return ()
+endif ()
+```
+
+The scaffolder's `templates/README_STDC++.md` is the user guide for the package.
 
 # 11. Examples across boards
 
