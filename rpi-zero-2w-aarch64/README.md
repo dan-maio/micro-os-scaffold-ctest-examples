@@ -22,10 +22,11 @@ explains where new files, libraries and tests go.
 ## Layout
 
 ```text
-micro-os-plus-iii-smp/      kernel, complete
-micro-os-plus-iii-aarch64/  port, selected test only
-tests/                      harness, selected platform only
-scaffold.json               slim manifest
+micro-os-plus-iii-smp/        kernel, complete
+micro-os-plus-iii-aarch64/    port, selected test only
+tests/                        harness, selected platform only
+third_party/micro-test-plus/  µTest++ framework (--micro-test-plus)
+scaffold.json                 slim manifest
 ```
 
 Kept in the port:
@@ -34,6 +35,10 @@ Kept in the port:
 - `test/boards/rpi-zero-2w/` (board files, linker script, runner)
 - `test/rpi-zero-2w/include/`, `test/rpi-zero-2w/src/`, `tests.cmake`
 - `test/rpi-zero-2w/smp-mat-test/`
+- `test/rpi-zero-2w/mtp-args/` (added by `--micro-test-plus`)
+- `test/rpi-zero-2w/mtp-example/` (added by `--micro-test-plus`)
+- `test/rpi-zero-2w/mtp-smp/` (added by `--micro-test-plus`)
+- `test/mtp/` (the µTest++ board support, added by `--micro-test-plus`)
 
 ## Tools
 
@@ -282,7 +287,7 @@ added here**. Copy new work back to the source repository
 ## µTest++ tests
 
 This workspace was scaffolded with `--micro-test-plus`: the µTest++ test framework
-(@micro-os-plus/micro-test-plus 6.0.0, from `/home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus`)
+(@micro-os-plus/micro-test-plus 6.0.0, from `https://github.com/micro-os-plus/micro-test-plus-xpack.git` at `v6.0.0`)
 is in `third_party/micro-test-plus/`, unchanged, and the boards below can run tests
 written with it. Such a test is an ordinary test directory named `mtp-<name>`: the
 harness builds and registers it with CTest like every other test; inside, a µTest++
@@ -461,7 +466,8 @@ node /home/dan/Work/micro-os-scaffold/bin/scaffold.js \
   /home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64 \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select 3.1.smp-mat-test \
-  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
+  --micro-test-plus-ref v6.0.0 \
   --lean --yes
 ```
 

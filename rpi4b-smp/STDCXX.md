@@ -1159,7 +1159,8 @@ Three selection shapes are useful:
 node bin/scaffold.js /home/dan/Work/rpi4b-stdcpp \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select 3.3.1 \
-  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
+  --micro-test-plus-ref v6.0.0 \
   --yes
 ```
 
@@ -1779,7 +1780,8 @@ is the Raspberry Pi Pico 2 (RP2350, 2 × Cortex-M33), workspace
 node bin/scaffold.js /home/dan/Work/pico2-smp-stdcpp \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select 4.4.20 \
-  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
+  --micro-test-plus-ref v6.0.0 \
   --yes --no-build
 ```
 
@@ -1833,7 +1835,8 @@ flash support:
 node bin/scaffold.js /home/dan/Work/weactf411-spi-stdcpp \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select 4.7.5 \
-  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
+  --micro-test-plus-ref v6.0.0 \
   --yes --no-build
 ```
 

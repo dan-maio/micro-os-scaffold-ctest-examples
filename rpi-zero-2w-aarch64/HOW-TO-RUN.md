@@ -9,8 +9,9 @@ organised, how a test becomes a CTest case, and how the runners work on any
 board — read [tests/ARCHITECTURE.md](tests/ARCHITECTURE.md) (or
 [tests/ARCHITECTURE.pdf](tests/ARCHITECTURE.pdf)).
 
-This workspace reproduces every CTest case of the hand-made
-`micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace:
+This workspace reproduces every CTest case of the earlier `--micro-test-plus`
+scaffold `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` (since
+deleted), plus `mtp-args`:
 
 ```text
 aarch64-rpi-zero-2w-mtp-args-qemu

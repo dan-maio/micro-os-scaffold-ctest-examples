@@ -13,10 +13,12 @@ This folder holds one workspace per board:
   `spi-stdcpp-test`: the stdc++ package plus the board's SPI NOR flash
   (JEDEC ID, all transports, scratch sector write/restore); hardware only,
   scaffolded from `cortexm-weactf411/spi-pipeline`;
-- `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, all eight
-  CTest cases (including `mtp-args`) of the hand-made
-  `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace plus the
-  arguments check.
+- `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, eight CTest
+  cases: `smp-mat-test`, `mtp-example`, `mtp-smp` and `mtp-args` (the
+  command-line check), each under QEMU and on the board. It reproduces the
+  earlier `--micro-test-plus` scaffold
+  `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` (since deleted),
+  with `mtp-args` added.
 
 The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`;
 the Pico 2 and WeAct workspaces are the same guide's Cortex-M applications

@@ -11,9 +11,9 @@
   "sourceUrl": null,
   "sourceBranch": null,
   "microTestPlus": {
-    "spec": "/home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus",
-    "ref": null,
-    "kind": "folder",
+    "spec": "https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "ref": "v6.0.0",
+    "kind": "git",
     "name": "@micro-os-plus/micro-test-plus",
     "version": "6.0.0",
     "commit": null,
