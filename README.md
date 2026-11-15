@@ -343,6 +343,9 @@ exec /path/to/xpack-openocd/bin/openocd -c "adapter serial E46268C3571E0D36" "$@
 ### What was added
 
 - `third_party/micro-test-plus/`: the framework (include/, src/, CMakeLists.txt, licences).
+- `third_party/stateos-stdc++/`: the StateOS stdc++ package adapted to µOS++ III
+  (gthr layer, std::thread, future/promise/async, chrono, emulated TLS, C++20
+  barrier/latch/semaphore), used by the Raspberry Pi 4 B `smp_test4`.
 - `micro-os-plus-iii-cortexm/test/mtp/`: the board support (`mtp_board.*`, `mtp_semihosting.hpp`, `mtp_startup.hpp`, README.md).
 - `micro-os-plus-iii-cortexm/test/weactf411/mtp-example/`: the starter test; a µTest++ block at the end of `micro-os-plus-iii-cortexm/test/weactf411/tests.cmake` and one branch in its library hook.
 - `micro-os-plus-iii-cortexm/test/weactf411/mtp-args/`: the semihosting argc/argv check (below).

@@ -94,7 +94,7 @@ case "$CONFIG" in
     BUILD_TYPE='Debug'
     TOOLCHAIN='xpacks/@micro-os-plus/build-helper/cmake/toolchains/aarch64-none-elf-gcc.cmake'
     HOST_COMPILERS=
-    SELECTED=('aarch64-rpi4b-clock-test-qemu' 'aarch64-rpi4b-clock-test-hwd' 'aarch64-rpi4b-mtp-example-qemu' 'aarch64-rpi4b-mtp-example-hwd' 'aarch64-rpi4b-mtp-args-qemu' 'aarch64-rpi4b-mtp-args-hwd' 'aarch64-rpi4b-mtp-smp-qemu' 'aarch64-rpi4b-mtp-smp-hwd' 'aarch64-rpi4b-mtp-eth-net-qemu' 'aarch64-rpi4b-mtp-eth-net-hwd')
+    SELECTED=('aarch64-rpi4b-clock-test-qemu' 'aarch64-rpi4b-clock-test-hwd' 'aarch64-rpi4b-mtp-example-qemu' 'aarch64-rpi4b-mtp-example-hwd' 'aarch64-rpi4b-mtp-args-qemu' 'aarch64-rpi4b-mtp-args-hwd' 'aarch64-rpi4b-mtp-smp-qemu' 'aarch64-rpi4b-mtp-smp-hwd' 'aarch64-rpi4b-mtp-eth-net-qemu' 'aarch64-rpi4b-mtp-eth-net-hwd' 'aarch64-rpi4b-smp_test4-qemu' 'aarch64-rpi4b-smp_test4-hwd')
     ;;
   *)
     echo "Unknown configuration: $CONFIG" >&2

@@ -103,6 +103,11 @@ if (NOT TARGET aarch64-rpi4b-harness-suite)
 endif ()
 
 function (board_test_libs _app _out)
+  # smp_test4: the StateOS stdc++ package on top of µTest++.
+  if (_app STREQUAL "smp_test4")
+    set (${_out} stateos-stdc++ uos-micro-test-plus PARENT_SCOPE)
+    return ()
+  endif ()
   # µTest++ (micro-os-scaffold --micro-test-plus): every mtp-* test.
   if ("${_app}" MATCHES "^mtp-")
     if ("${_app}" MATCHES "^mtp-eth-" AND TARGET aarch64-rpi4b-eth)
@@ -169,6 +174,26 @@ if (NOT TARGET aarch64-rpi4b-eth)
                               "ETH_TEST_PEER=\"${ETH_TEST_PEER}\""
                               "ETH_TCP_WAIT_S=${ETH_TCP_WAIT_S}")
 endif ()
+
+# ---- stateos-stdc++ ---------------------------------------------------------
+# The StateOS stdc++ package adapted to µOS++ III (workspace
+# third_party/stateos-stdc++). Its include directory goes BEFORE the
+# toolchain's C++ headers: it provides <bits/gthr-default.h> and the C++20
+# <barrier>/<latch>/<semaphore> the toolchain leaves out on bare metal.
+# smp_test4 links it (board_test_libs, above).
+set (_stateos_stdcpp
+     "${CMAKE_CURRENT_LIST_DIR}/../../../third_party/stateos-stdc++")
+if (NOT IS_DIRECTORY "${_stateos_stdcpp}")
+  # The library is kept once, in the examples repository's third_party/;
+  # a scaffolded workspace is one directory deeper.
+  set (_stateos_stdcpp
+       "${CMAKE_CURRENT_LIST_DIR}/../../../../third_party/stateos-stdc++")
+endif ()
+if (NOT TARGET stateos-stdc++)
+  add_subdirectory ("${_stateos_stdcpp}"
+                    "${CMAKE_BINARY_DIR}/stateos-stdc++-bin")
+endif ()
+
 
 # ---- µTest++ (micro-os-scaffold --micro-test-plus) -------------------------------------
 # Every test directory named mtp-* gets µTest++ (the framework in the

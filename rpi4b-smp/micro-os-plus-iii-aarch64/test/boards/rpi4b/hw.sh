@@ -63,10 +63,10 @@ fi
 #   * only core 0 is halted; cores 1-3 remain in the armstub8 spin-table loop
 #     until the kernel releases them (smp.cpp), so OpenOCD does not cache stale
 #     registers when CTI restarts them. Semihosting is enabled on all 4 cores.
-# SCAFFOLD µTest++: argv[0] is the test, and a mtp-* test also asks
+# SCAFFOLD µTest++: argv[0] is the test, and a µTest++ test (mtp-*, smp_test4) also asks
 # for its complete TAP report in a file through semihosting.
 UOS_SEMIHOST_CMDLINE="${1:-}"
-if [[ "$1" == mtp-* ]]; then
+if [[ "$1" == mtp-* || "$1" == smp_test4 ]]; then
   mkdir -p "$BUILD/test/.hw-logs"
   UOS_SEMIHOST_CMDLINE="$1 --output-file $BUILD/test/.hw-logs/$1.tap"
 fi

@@ -67,7 +67,7 @@ for exe in "${BUILD_DIR}"/*-host; do
 
   # SCAFFOLD µTest++: the report file (the host filesystem is the console).
   report=()
-  if [[ "$app" == mtp-* ]]; then
+  if [[ "$app" == mtp-* || "$app" == smp_test4 ]]; then
     report=(--output-file "${LOGS}/${app}.tap")
   fi
 

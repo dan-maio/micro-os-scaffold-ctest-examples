@@ -29,7 +29,8 @@ The workspace also carries the other starters:
 - `mtp-args` — the semihosting `argc`/`argv` check (`00 - Arguments`, plus
   `00 - Cores` on this SMP board);
 - `mtp-example` — the runtime + basics starter;
-- `mtp-eth-net` — the GENET Ethernet test (hardware only).
+- `mtp-eth-net` — the GENET Ethernet test (hardware only);
+- `smp_test4` — the StateOS stdc++ package adapted to µOS++ III (below).
 
 ## What it tests
 
@@ -65,6 +66,34 @@ cd tests
 `./run.sh list` shows every case. The QEMU case is
 `aarch64-rpi4b-mtp-smp-qemu`; the hardware case is
 `aarch64-rpi4b-mtp-smp-hwd`.
+
+## smp_test4: the StateOS stdc++ test
+
+`smp_test4` runs the C++ standard-library parts a bare-metal toolchain does not
+provide, on top of the StateOS `stdc++` layer adapted to µOS++:
+
+```text
+micro-os-plus-iii-aarch64/test/rpi4b/smp_test4/
+├── main.cpp              start, release the cores, run
+├── suite-thread.cpp      std::thread, jthread, ids, sleep, thread_local (TLS)
+├── suite-promise.cpp     promise/future, wait_for status, shared_future
+├── suite-future.cpp      packaged_task, async, set_value_at_thread_exit
+├── suite-mutex.cpp       mutex, timed/recursive mutex, call_once
+├── suite-sync.cpp        condition_variable, semaphores, latch, barrier
+└── suite-chrono.cpp      steady_clock, system_clock, sleeps
+```
+
+The library is `third_party/stateos-stdc++/` (a relative link to the
+repository's `third_party/stateos-stdc++/`). Its include directory is placed
+before the toolchain's C++ headers, so `<bits/gthr-default.h>` is the µOS++
+gthread layer and `<barrier>`, `<latch>`, `<semaphore>` are the versions built
+on the kernel. See `third_party/stateos-stdc++/README.md` for the design and
+the differences from the StateOS original.
+
+```bash
+./run.sh smp_test4          # under QEMU
+./run.sh smp_test4 --hwd    # on the board
+```
 
 ## Results
 

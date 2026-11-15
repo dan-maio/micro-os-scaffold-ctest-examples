@@ -72,16 +72,18 @@
           "aarch64-rpi4b-mtp-smp-qemu",
           "aarch64-rpi4b-mtp-smp-hwd",
           "aarch64-rpi4b-mtp-eth-net-qemu",
-          "aarch64-rpi4b-mtp-eth-net-hwd"
+          "aarch64-rpi4b-mtp-eth-net-hwd",
+          "aarch64-rpi4b-smp_test4-qemu",
+          "aarch64-rpi4b-smp_test4-hwd"
         ],
         "smpBoot": 1
       }
     ],
     "patches": [
-      "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file",
-      "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file",
-      "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file",
-      "test/boards/rpi4b/hw.sh: µTest++ command line for run-hw.sh"
+      "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file (mtp-* and smp_test4)",
+      "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file (mtp-* and smp_test4)",
+      "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file (mtp-* and smp_test4)",
+      "test/boards/rpi4b/hw.sh: µTest++ command line for run-hw.sh (mtp-* and smp_test4)"
     ]
   },
   "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi4b-smp",

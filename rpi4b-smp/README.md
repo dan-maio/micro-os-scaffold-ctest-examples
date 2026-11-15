@@ -19,6 +19,7 @@ explains where new files, libraries and tests go.
 | `mtp-args` | `aarch64-rpi4b/mtp-args` | `^aarch64-rpi4b-mtp-args-(qemu|hwd)$` |
 | `mtp-smp` | `aarch64-rpi4b/mtp-smp` | `^aarch64-rpi4b-mtp-smp-(qemu|hwd)$` |
 | `mtp-eth-net` | `aarch64-rpi4b/mtp-eth-net` | `^aarch64-rpi4b-mtp-eth-net-(qemu|hwd)$` |
+| `smp_test4` | `aarch64-rpi4b/smp_test4` | `^aarch64-rpi4b-smp_test4-(qemu|hwd)$` |
 
 ## Layout
 
@@ -35,6 +36,8 @@ Kept in the port:
 - `test/boards/rpi4b/` (board files, linker script, runner)
 - `test/rpi4b/include/`, `test/rpi4b/src/`, `tests.cmake`
 - `test/rpi4b/clock-test/`
+- `test/rpi4b/smp_test4/` (the StateOS stdc++ test)
+- `third_party/stateos-stdc++/` (a link to the library in the repository's `third_party/`)
 
 ## Tools
 
@@ -291,7 +294,7 @@ runner checks with `t.expect (...)` and reports in TAP.
 
 | Platform | Board | µTest++ | Console | Other cores | Starter tests (CTest) |
 | --- | --- | --- | --- | --- | --- |
-| `aarch64-rpi4b` | `rpi4b` | integrated | model 1 | test-smp-boot | `aarch64-rpi4b-mtp-example-qemu`, `aarch64-rpi4b-mtp-example-hwd`, `aarch64-rpi4b-mtp-args-qemu`, `aarch64-rpi4b-mtp-args-hwd`, `aarch64-rpi4b-mtp-smp-qemu`, `aarch64-rpi4b-mtp-smp-hwd`, `aarch64-rpi4b-mtp-eth-net-qemu`, `aarch64-rpi4b-mtp-eth-net-hwd` |
+| `aarch64-rpi4b` | `rpi4b` | integrated | model 1 | test-smp-boot | `aarch64-rpi4b-mtp-example-qemu`, `aarch64-rpi4b-mtp-example-hwd`, `aarch64-rpi4b-mtp-args-qemu`, `aarch64-rpi4b-mtp-args-hwd`, `aarch64-rpi4b-mtp-smp-qemu`, `aarch64-rpi4b-mtp-smp-hwd`, `aarch64-rpi4b-mtp-eth-net-qemu`, `aarch64-rpi4b-mtp-eth-net-hwd`, `aarch64-rpi4b-smp_test4-qemu`, `aarch64-rpi4b-smp_test4-hwd` |
 
 ### The runtime rule
 
@@ -315,12 +318,36 @@ The starter test checks the same on the target, in its suite "01 - Runtime".
 - ok: the heap is given to the µOS++ free store (malloc) at start-up (micro-os-plus-iii-smp/src/startup/initialise-free-store.cpp)
 - ok: sbrk () over _Heap_Begin .. _Heap_Limit (micro-os-plus-iii-smp/src/libc/_sbrk.c)
 
+### smp_test4: the StateOS stdc++ layer
+
+`smp_test4` is not a generator starter: it is the StateOS `stdc++` package
+adapted to µOS++ III, and it exercises the parts of the C++ standard library a
+bare-metal toolchain does not provide. The library lives once, in the
+repository's `third_party/stateos-stdc++/`, and `third_party/stateos-stdc++`
+here is a relative link to it.
+
+| Suite | Checks |
+|---|---|
+| `01 - std::thread and TLS` | join, detach, ids, `jthread`, `yield`, `sleep_for`, `thread_local` (emulated TLS) |
+| `02 - promise and future` | value and `void` handshakes, `wait_for` status, `shared_future`, moved promises |
+| `03 - packaged_task and async` | `packaged_task`, `launch::async` vs `launch::deferred`, `set_value_at_thread_exit` |
+| `04 - mutexes and call_once` | `lock_guard`, `timed_mutex`, `recursive_mutex`, `call_once`, `unique_lock` |
+| `05 - condition variable and C++20 sync` | `condition_variable`, `notify_all_at_thread_exit`, semaphores, `latch`, `barrier`, `shared_mutex` |
+| `06 - chrono` | `steady_clock`, `system_clock`, sleeps, duration conversions |
+
+The library's CMake target (`stateos-stdc++`) puts its include directory
+**before** the toolchain's C++ headers. That is what makes
+`<bits/gthr-default.h>` the µOS++ one, and what supplies the C++20
+`<barrier>`, `<latch>` and `<semaphore>` headers the toolchain leaves out when
+atomic waiting and POSIX semaphores are unavailable. See
+`third_party/stateos-stdc++/README.md`.
+
 ### Running
 
 ```bash
 cd tests
-./run.sh -c aarch64-rpi4b-cmake-gcc-debug mtp-example mtp-args mtp-smp mtp-eth-net              # under QEMU / on the host
-./run.sh -c aarch64-rpi4b-cmake-gcc-debug mtp-example mtp-args mtp-smp mtp-eth-net --hwd        # on the board
+./run.sh -c aarch64-rpi4b-cmake-gcc-debug mtp-example mtp-args mtp-smp mtp-eth-net smp_test4              # under QEMU / on the host
+./run.sh -c aarch64-rpi4b-cmake-gcc-debug mtp-example mtp-args mtp-smp mtp-eth-net smp_test4 --hwd        # on the board
 ```
 
 The TAP report goes to the board's console and to the runner; the run ends with

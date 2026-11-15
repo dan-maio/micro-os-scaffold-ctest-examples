@@ -1,0 +1,5 @@
+// <semaphore>: the µOS++ III implementation, found before the toolchain's own.
+#ifndef __STATEOS_STDCXX_SEMAPHORE_WRAPPER
+#define __STATEOS_STDCXX_SEMAPHORE_WRAPPER
+#include "inc/semaphore.hh"
+#endif

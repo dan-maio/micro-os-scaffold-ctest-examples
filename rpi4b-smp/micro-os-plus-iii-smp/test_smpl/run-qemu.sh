@@ -89,10 +89,10 @@ for img in "${BUILD_DIR}"/*-qemu.bin; do
   [[ -e "$img" ]] || { echo "no *-qemu.bin in ${BUILD_DIR}"; exit 2; }
   app="$(basename "$img" -qemu.bin)"
 
-# SCAFFOLD µTest++: the report file of a mtp-* test goes through
+# SCAFFOLD µTest++: the report file of a µTest++ test (mtp-*, smp_test4) goes through
 # semihosting; every test gets its name as argv[0].
 semi_config="enable=on,target=native,arg=${app}"
-if [[ "$app" == mtp-* ]]; then
+if [[ "$app" == mtp-* || "$app" == smp_test4 ]]; then
   semi_config="${semi_config},arg=--output-file,arg=${LOGS}/${app}.tap"
 fi
 

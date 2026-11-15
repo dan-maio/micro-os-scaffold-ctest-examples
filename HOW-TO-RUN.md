@@ -2,9 +2,11 @@
 
 This folder holds one workspace per board:
 
-- `new/` (this folder) — WeAct F411CE, Cortex-M4;
-- `new/rpi4b-smp/` — Raspberry Pi 4 B, AArch64, the SMP test;
-- `new/rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, all eight
+- `micro-os-scaffold-ctest-examples/` (this folder) — WeAct F411CE, Cortex-M4;
+- `rpi4b-smp/` — Raspberry Pi 4 B, AArch64, the SMP test, plus `smp_test4`
+  (the StateOS stdc++ package adapted to µOS++: std::thread, future/promise,
+  mutexes, condition variables, semaphores, barrier/latch, chrono, TLS);
+- `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, all eight
   CTest cases (including `mtp-args`) of the hand-made
   `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace plus the
   arguments check.

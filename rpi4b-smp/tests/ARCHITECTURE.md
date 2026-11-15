@@ -747,6 +747,32 @@ also supplies the suite's `os-app-config.h` and, where needed, a strong
 `main()`/startup hooks. The resulting CTest case is still
 `<platform>-<app>-<variant>`.
 
+## 10.3 Third-party libraries a test brings
+
+A test that needs more than the kernel and the harness names an INTERFACE
+library in `board_test_libs()`, next to `uos-micro-test-plus`. Two are in use:
+
+| Target | Where | What |
+| --- | --- | --- |
+| `uos-micro-test-plus` | `third_party/micro-test-plus/` | the framework and the board support |
+| `stateos-stdc++` | `third_party/stateos-stdc++/` | the C++ standard-library layer (gthr, `std::thread`, future/promise, chrono, TLS, C++20 `barrier`/`latch`/`semaphore`), used by `smp_test4` |
+
+`stateos-stdc++` puts its include directory **before** the toolchain's C++
+headers (`target_include_directories (... BEFORE INTERFACE ...)`). That is load
+bearing:
+
+- `<bits/gthr.h>` includes `<bits/gthr-default.h>`, and the first one found
+  must be the µOS++ gthread layer, or `<mutex>`, `<thread>` and `<future>`
+  compile as single-threaded no-ops;
+- the toolchain provides `<barrier>`, `<latch>` and `<semaphore>` only when
+  atomic waiting or POSIX semaphores are available. On this target neither is,
+  so the package's headers must be found first.
+
+Its `_GLIBCXX_HAS_GTHREADS=1` is an INTERFACE define: `c++config.h` leaves it
+undefined on the bare-metal target. The library's sources are INTERFACE
+sources, so each test compiles its own copy with that test's defines and
+include path.
+
 ---
 
 # 11. Examples across boards
