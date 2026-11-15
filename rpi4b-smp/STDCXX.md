@@ -1865,6 +1865,12 @@ waits for `TC` after writing a line. That proves the software side even when
 the UART pins are not wired. The board's UART is **PA9 (TX) / PA10 (RX),
 115200 8N1**; the runner opens neither it nor the probe's CDC.
 
+Verified on the board with `tio -b 115200 /dev/ttyACM0`: the `# ...` lines
+appear live during the run. Open the terminal before starting the run; a UART
+has no host-side buffer. After `RESULT: PASS`, OpenOCD may print
+`Error setting register pc` / `context restore failed` while it tears down the
+core halted at the semihosting exit; they do not affect the CTest result.
+
 Only the last sector is touched, and it is restored, so the SPI flash's
 filesystem partitions and the 1 MiB primary archive are left alone.
 

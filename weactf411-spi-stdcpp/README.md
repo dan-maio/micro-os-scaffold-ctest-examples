@@ -438,14 +438,33 @@ the test and that the console was configured:
 # argc=3 argv[0]="mtp-args" argv[1]="--output-file" argv[2]="...tap"
 ```
 
-### UART wiring and stale terminals
+### UART console (verified)
 
 The test writes its console on **USART1, PA9 (TX) / PA10 (RX), 115200 8N1**
-(the same pins the board's `spi-pipeline` used). The runner opens neither the
-UART nor the probe's CDC; it programs and reads the verdict over OpenOCD and
-semihosting, so a terminal on the board's UART is yours.
+(the same pins the board's `spi-pipeline` used). Verified on this board with
 
-If the terminal shows lines from an older image (`main(argc=1, argv=[""]);`,
+```bash
+tio -b 115200 /dev/ttyACM0
+```
+
+the `# spi-stdcpp-test, on the board`, `# args:`, `# console:` and `# SPI:`
+lines appear live while the test runs. Open the terminal **before** starting
+the run: the UART has no host-side buffer, so lines sent before the port is
+open are lost. The runner opens neither the UART nor the probe's CDC; it
+programs and reads the verdict over OpenOCD and semihosting, so the port is
+yours.
+
+The teardown after a passing run can print
+
+```text
+Error: [stm32f4x.cpu] Error setting register pc
+Error: [stm32f4x.cpu] context restore failed, aborting resume
+```
+
+when OpenOCD tries to resume the core that stopped at the semihosting
+`SYS_EXIT`. They come after `RESULT: PASS` and do not affect the CTest result.
+
+If the terminal still shows lines from an older image (`main(argc=1, argv=[""]);`,
 `spi-pipeline: JEDEC ...`), those are not from `spi-stdcpp-test`: its first
 lines are `# spi-stdcpp-test, on the board`, `# args: ...` and
 `# console: ...`. Check, in this order:
