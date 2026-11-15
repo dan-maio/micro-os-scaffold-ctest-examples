@@ -1769,6 +1769,59 @@ node bin/scaffold.js /home/dan/Work/rpi4b-stdcpp-2 \
 > directory that is not part of the source workspace is therefore at risk on a
 > re-scaffold; keeping it in the source repo (step 1) removes that risk.
 
+## 29.11 The same recipe on Cortex-M: Pico 2
+
+The steps above are not AArch64-specific. The second application of the guide
+is the Raspberry Pi Pico 2 (RP2350, 2 × Cortex-M33), workspace
+`pico2-smp-stdcpp/`, test `smp-stdcpp-test`:
+
+```bash
+node bin/scaffold.js /home/dan/Work/pico2-smp-stdcpp \
+  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
+  --select 4.4.20 \
+  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --yes --no-build
+```
+
+`4.4.20` is `cortexm-pico2/smp-test4`, the board's kernel-object SMP test. The
+lean workspace then gets the library in `third_party/stateos-stdc++` (a
+relative link to the repository copy), the suites under
+`micro-os-plus-iii-cortexm/test/pico2/smp-stdcpp-test/`, and the same
+`stateos-stdc++` + `board_test_libs()` hook in the board's `tests.cmake`.
+
+Four Cortex-M facts change the details:
+
+| Fact | What it means |
+| --- | --- |
+| 32-bit Cortex-M33 | `gthread.cc` uses 4 KiB stacks (`thread_stack_bytes`), `size_t` is 32 bits, and the `MTP_NANO_PRINTF` wrappers keep `%zu` readable |
+| no native TLS | `thread_local` goes through `__emutls_get_address`; `emutls.cc` also provides `__aeabi_read_tp` for GCC 15's ARM path |
+| QEMU does not model the RP2350 SIO block | the pico2 `qemu` image is the generic **single-core** `mps2-an500`, so `OS_NCPU=1`, `release_cores()` is a no-op and `00 - Cores` is not registered; the `hwd` image runs both cores through the bootrom FIFO and the SIO IPIs |
+| the board's `boot.S` owns the start-up | it called `main(0, NULL)`, so `--output-file` never reached µTest++. A weak `os_startup_initialize_args()` in `init-fini-stubs.c` gives the default, `boot.S` calls it and passes the result to `main()`, and the µTest++ strong reader (SYS_GET_CMDLINE) overrides it. The qemu case passes `arg=<app>,arg=--output-file,arg=<...>/.qemu-logs/<app>.tap` in its `--semihosting-config` |
+
+The lean workspace also dropped `test/boards/pico2/qemu/` and
+`tests/device-qemu-cortexm/` because the selected `smp-test4` is hardware-only;
+they were restored (64 KiB and 20 KiB) so the new test can have a qemu image.
+
+Results:
+
+| Case | Checks | Cases | Suites | Time |
+| --- | --- | --- | --- | --- |
+| `cortexm-pico2-smp-stdcpp-test-qemu` | 72 | 36 | 6 | 0.12 s CTest, 107 ms kernel |
+| `cortexm-pico2-smp-stdcpp-test-hwd` | 75 | 37 | 7 | 8–29 s CTest, 405 ms kernel |
+
+The board adds the three `00 - Cores` checks. Both reports are files:
+
+```text
+pico2-smp-stdcpp/tests/build/cortexm-pico2-cmake-gcc-debug/
+  platform-bin/port-tests/.qemu-logs/smp-stdcpp-test.tap
+  platform-bin/port-tests/.hw-logs/smp-stdcpp-test.tap
+```
+
+The hardware runner is OpenOCD over CMSIS-DAP (`rp2350.cm0`/`cm1`), which
+programs the ELF, enables semihosting on both cores, resumes `cm1` before
+`cm0`, and ends on the semihosting `SYS_EXIT`. The board must be power-cycled
+between runs.
+
 # 30. Porting the library to another board
 
 The library is board-independent; the board facts are in the port and in three constants in the library:
@@ -1813,7 +1866,12 @@ The port was validated in this order; each step found something the previous one
 3. **QEMU run.** Found the `memalign()` abort on the first `thread_local` access (chapter 13.3).
 4. **QEMU, all suites.** 75 checks, 37 cases, 7 suites, 0 failed, 106 ms.
 5. **Hardware run** on the Raspberry Pi 4 B, CMSIS-DAP probe, all four cores: 75 checks, 0 failed, 24.6 s, CTest 65.6 s.
-6. **Regression run:** the workspace's other five QEMU cases still pass.
+6. **Regression run:** the rpi4b workspace's other five QEMU cases still pass.
+7. **Cortex-M (Pico 2).** The same library and suites on `cortexm-pico2`:
+   72 checks under QEMU (single-core emulated image) and 75 on the board
+   (both cores), 0 failed. This step found the `boot.S` `argc=0` problem: the
+   scaffolded `--output-file` never reached µTest++ until the semihosting
+   command line was read before `main()`.
 
 # 33. File inventory and commands
 
@@ -1824,6 +1882,12 @@ Repository
 │   ├── third_party/stateos-stdc++       symlink to the library
 │   ├── micro-os-plus-iii-aarch64/
 │   │   └── test/rpi4b/smp_test4/         the test
+│   ├── micro-os-plus-iii-smp/            the kernel
+│   └── tests/                            the harness, run.sh, CTest
+├── pico2-smp-stdcpp/                     the Cortex-M application
+│   ├── third_party/stateos-stdc++       symlink to the library
+│   ├── micro-os-plus-iii-cortexm/
+│   │   └── test/pico2/smp-stdcpp-test/   the test
 │   ├── micro-os-plus-iii-smp/            the kernel
 │   └── tests/                            the harness, run.sh, CTest
 └── rpi-zero-2w-aarch64/                  the other AArch64 workspace
@@ -1843,6 +1907,13 @@ cd rpi4b-smp/tests
 # the TAP report
 cat tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.qemu-logs/smp_test4.tap
 cat tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.hw-logs/smp_test4.tap
+
+# the Cortex-M application
+cd /home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp/tests
+./run.sh smp-stdcpp-test
+./run.sh smp-stdcpp-test --hwd
+cat build/cortexm-pico2-cmake-gcc-debug/platform-bin/port-tests/.qemu-logs/smp-stdcpp-test.tap
+cat build/cortexm-pico2-cmake-gcc-debug/platform-bin/port-tests/.hw-logs/smp-stdcpp-test.tap
 ```
 
 # 34. Summary
@@ -1853,6 +1924,7 @@ cat tests/build/aarch64-rpi4b-cmake-gcc-debug/platform-bin/port-tests/test/.hw-l
 - **The CTest cases** build the library into the image, run it under QEMU or over CMSIS-DAP on the board, read the `RESULT:` line, and keep the complete TAP report under the build tree.
 - **Both runs pass:** 75/75 checks on QEMU (0.21 s) and on the Raspberry Pi 4 B (65.6 s CTest, 24.6 s image time).
 - **A new project** is one `micro-os-scaffold` command, the library in `third_party/`, the test directory, two CMake hooks and one runner condition (chapter 29).
+- **A second target**, a 2 × Cortex-M33 Pico 2, runs the same suites: 72 checks under QEMU (single-core emulated) and 75 on the board (chapter 29.11).
 
 ---
 

@@ -1,0 +1,116 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ *
+ * Major parts of the code are inspired from v1.1.8 of the Boost UT project,
+ * released under the terms of the Boost Version 1.0 Software License,
+ * which can be obtained from https://www.boost.org/LICENSE_1_0.txt.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ source file with implementations for the deprecated µTest++
+ * definitions.
+ *
+ * @details
+ * This source file contains the non-inline definitions of the deprecated
+ * definitions declared in `deprecated.h`:
+ * - `reflection::short_name()`, which extracts the base file name from a
+ *   fully qualified path, by delegating to `utility::extract_file_name()`;
+ * - the constructor of `detail::timestamp` that reads the system clock,
+ *   with `detail::read_clock()`, the same clock as `detail::stopwatch`.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus`
+ * namespace.
+ *
+ * The definitions are compiled only when
+ * `MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED` is defined.
+ *
+ * This file must be included when building the µTest++ library.
+ */
+
+// ----------------------------------------------------------------------------
+
+#include "micro-os-plus/micro-test-plus/deprecated.h"
+#include "micro-os-plus/micro-test-plus/stopwatch.h"
+#include "micro-os-plus/micro-test-plus/utility.h"
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED) \
+    && defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+// ----------------------------------------------------------------------------
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+
+  namespace reflection
+  {
+    // ------------------------------------------------------------------------
+
+    /**
+     * @details
+     * Delegates to `utility::extract_file_name()`, the single
+     * implementation used by the framework, so both the `/` and the
+     * backslash separators are recognised. If no separator is present,
+     * the original input string is returned.
+     */
+    // Deprecated since 6.0.0; use utility::extract_file_name().
+    const char*
+    short_name (const char* name) noexcept
+    {
+      return utility::extract_file_name (name);
+    }
+
+    // ------------------------------------------------------------------------
+  } // namespace reflection
+
+  // --------------------------------------------------------------------------
+
+  namespace detail
+  {
+    // ========================================================================
+
+    /**
+     * @details
+     * Reads the system clock into the stored value, with
+     * `read_clock()`, the same clock as `stopwatch`; without a clock,
+     * the value remains zero.
+     */
+    // Deprecated since 6.0.0, as the whole `timestamp` class; the timings are
+    // internal.
+    timestamp::timestamp (void) noexcept
+    {
+      read_clock (value_);
+    }
+
+    // ------------------------------------------------------------------------
+  } // namespace detail
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+// ----------------------------------------------------------------------------
+
+#endif /* defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED) \
+          && defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED) */
+
+// ----------------------------------------------------------------------------

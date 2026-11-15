@@ -6,12 +6,16 @@ This folder holds one workspace per board:
 - `rpi4b-smp/` — Raspberry Pi 4 B, AArch64, the SMP test, plus `smp_test4`
   (the StateOS stdc++ package adapted to µOS++: std::thread, future/promise,
   mutexes, condition variables, semaphores, barrier/latch, chrono, TLS);
+- `pico2-smp-stdcpp/` — Raspberry Pi Pico 2 (RP2350, 2x Cortex-M33), the same
+  stdc++ package as `smp-stdcpp-test`, under QEMU (single-core) and on both
+  cores; the scaffolded base is `cortexm-pico2/smp-test4`;
 - `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, all eight
   CTest cases (including `mtp-args`) of the hand-made
   `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace plus the
   arguments check.
 
-The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`.
+The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`;
+the Pico 2 workspace is the same guide's Cortex-M application (chapter 29.11).
 
 The rest of this page describes the WeAct workspace in this folder. The harness in general is described in `tests/ARCHITECTURE.md`/`.pdf`.
 

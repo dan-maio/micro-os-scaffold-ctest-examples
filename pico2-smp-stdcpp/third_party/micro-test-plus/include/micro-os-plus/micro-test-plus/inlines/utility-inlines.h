@@ -1,0 +1,129 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ *
+ * Major parts of the code are inspired from v1.1.8 of the Boost UT project,
+ * released under the terms of the Boost Version 1.0 Software License,
+ * which can be obtained from https://www.boost.org/LICENSE_1_0.txt.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with inline implementations for the µTest++ utility
+ * functions.
+ *
+ * @details
+ * This header provides the inline implementations for the utility function
+ * templates used within the µTest++ framework. It defines the logic for
+ * splitting strings into sub-strings using a specified delimiter, enabling
+ * convenient and type-safe string parsing in test expressions.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus::utility`
+ * namespace.
+ *
+ * This file is included by `utility.h`; the applications include
+ * `micro-os-plus/micro-test-plus.h`, not this file.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_UTILITY_INLINES_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_UTILITY_INLINES_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Waggregate-return"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+  namespace utility
+  {
+    /**
+     * @details
+     * This function template splits a string into a vector of sub-strings,
+     * using the specified delimiter characters.
+     *
+     * The function iterates through the input string, identifying the
+     * positions of any of the delimiter characters (via `find_first_of()`)
+     * and extracting the sub-strings between them. Each non-empty sub-string
+     * is added to the output vector; empty sub-strings, such as those between
+     * consecutive delimiters, are omitted. This approach supports flexible
+     * parsing of delimited data, which is useful for validating string
+     * processing logic in test cases.
+     *
+     * @par Example
+     *
+     * @code{.cpp}
+     * namespace mt = micro_os_plus::micro_test_plus;
+     *
+     * t.expect (std::vector<std::string_view>{ "a", "b" }
+     *             == mt::utility::split<std::string_view> ("a.b", "."))
+     *         << "a.b splits into [a,b]";
+     * @endcode
+     */
+    template <class T, class Delim_T>
+      requires requires (T s, Delim_T d) {
+        T::npos;
+        s.find_first_of (d, std::size_t{});
+        s.substr (std::size_t{}, std::size_t{});
+      }
+    [[nodiscard]] auto
+    split (T input, Delim_T delim) -> std::vector<T>
+    {
+      std::vector<T> output{};
+      std::size_t first{};
+      while (first < std::size (input))
+        {
+          const auto second = input.find_first_of (delim, first);
+          if (first != second)
+            {
+              output.emplace_back (input.substr (first, second - first));
+            }
+          if (second == T::npos)
+            {
+              break;
+            }
+          first = second + 1;
+        }
+      return output;
+    }
+
+    // ------------------------------------------------------------------------
+  } // namespace utility
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_UTILITY_INLINES_H_
+
+// ----------------------------------------------------------------------------
