@@ -12,13 +12,28 @@ This folder holds one workspace per board:
 - `weactf411-spi-stdcpp/` — WeAct F411CE (STM32F411CE, Cortex-M4F), the
   `spi-stdcpp-test`: the stdc++ package plus the board's SPI NOR flash
   (JEDEC ID, all transports, scratch sector write/restore); hardware only,
-  scaffolded from `cortexm-weactf411/spi-pipeline`;
+  scaffolded from `cortexm-weactf411/spi-pipeline`. On the board
+  (2026-11-15, WCH-Link): `mtp-args` 7/7, `mtp-example` 24/24, `spi-pipeline`
+  passed, `spi-stdcpp-test` 104/104; and in this folder `mos-test1`,
+  `mtp-args`, `mtp-example` passed. The console is USART1 at 115200 on the
+  WCH-Link's serial port: WeAct A9 (TX) to the WCH-Link's **RX**, A10 to its
+  TX. With TX and RX swapped nothing arrives, and USART1's receiver shows
+  noise (RXNE and overrun set) while the board's registers are all correct;
 - `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, eight CTest
   cases: `smp-mat-test`, `mtp-example`, `mtp-smp` and `mtp-args` (the
   command-line check), each under QEMU and on the board. It reproduces the
   earlier `--micro-test-plus` scaffold
   `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` (since deleted),
-  with `mtp-args` added.
+  with `mtp-args` added;
+- `rpi-zero-2w-aarch32/` — Raspberry Pi Zero 2 W, AArch32 (4x Cortex-A53 in
+  32-bit mode), ten CTest cases: `smp-mat-test`, `mtp-example`, `mtp-args`,
+  `mtp-smp` and `mtp-stdcpp`, each under QEMU and on the board. Scaffolded
+  from `aarch32-rpi-zero-2w/smp-mat-test` with `--micro-test-plus` and
+  `--stdcpp`, so the stdc++ test is the generated `mtp-stdcpp`, the first
+  run of the package in 32-bit mode: 75/75 under QEMU and on the board;
+  `mtp-smp` 78/78 with a 3.93x speed-up. Run on the board with
+  `PROBE=cmsis-dap ./run.sh --hwd-only`; its JTAG clock is set to 10000 kHz
+  in `test/boards/rpi-zero-2w/bcm2837-aarch32.cfg` (1000 in the source).
 
 The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`;
 the Pico 2 and WeAct workspaces are the same guide's Cortex-M applications

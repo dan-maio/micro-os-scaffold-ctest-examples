@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-11-15T11:32:06.754Z",
+  "generator": {
+    "name": "micro-os-scaffold",
+    "version": "1.0.0",
+    "node": "v24.22.2",
+    "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
+  },
+  "kernel": "micro-os-plus-iii-smp",
+  "projects": [
+    {
+      "id": "micro-os-plus-iii",
+      "role": "kernel",
+      "destination": "micro-os-plus-iii-smp"
+    },
+    {
+      "id": "micro-os-plus-iii-aarch32",
+      "role": "port",
+      "destination": "micro-os-plus-iii-aarch32"
+    }
+  ],
+  "harness": "tests",
+  "sharedRunners": "micro-os-plus-iii-smp/test_smpl",
+  "docs": null,
+  "integration": null,
+  "mode": "lean",
+  "xpacks": {
+    "build-helper": {
+      "source": "/home/dan/.local/xPacks/@micro-os-plus/build-helper/2.17.0",
+      "destination": "tests/xpacks/@micro-os-plus/build-helper",
+      "version": "2.17.0"
+    }
+  },
+  "externals": [],
+  "patches": [
+    "tests/cmake/tests-main.cmake: sibling root + kernel path",
+    "tests/CMakeLists.txt: kernel package.json path",
+    "tests/platforms/aarch32-rpi-zero-2w/CMakeLists.txt: shared runners from the kernel copy, QEMU root from environment",
+    "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file",
+    "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file",
+    "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file",
+    "test/boards/rpi-zero-2w/hw.sh: µTest++ command line for run-hw.sh"
+  ]
+}
