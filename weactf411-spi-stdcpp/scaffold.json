@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-15T09:06:00.779Z",
+  "generator": {
+    "name": "micro-os-scaffold",
+    "version": "1.0.0",
+    "node": "v24.22.2",
+    "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
+  },
+  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "sourceUrl": null,
+  "sourceBranch": null,
+  "microTestPlus": {
+    "spec": "/home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus",
+    "ref": null,
+    "kind": "folder",
+    "name": "@micro-os-plus/micro-test-plus",
+    "version": "6.0.0",
+    "commit": null,
+    "destination": "third_party/micro-test-plus",
+    "force": false,
+    "boards": [
+      {
+        "project": "micro-os-plus-iii-cortexm",
+        "platform": "cortexm-weactf411",
+        "board": "weactf411",
+        "status": "integrated",
+        "runtime": [
+          {
+            "rule": "linker script: .init_array kept, with __init_array_start/__init_array_end",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-cortexm/test/boards/weactf411/linker.ld"
+          },
+          {
+            "rule": "linker script: heap region _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-cortexm/test/boards/weactf411/linker.ld"
+          },
+          {
+            "rule": "boot code runs the static constructors",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-smp/src/startup/startup.cpp"
+          },
+          {
+            "rule": "the heap is given to the µOS++ free store (malloc) at start-up",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-smp/src/startup/initialise-free-store.cpp"
+          },
+          {
+            "rule": "sbrk () over _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii-smp/src/libc/_sbrk.c"
+          }
+        ],
+        "console": {
+          "model": 2,
+          "why": "uart::write (s, n), hw_result::semi_write0, and a weak _write in boards/shared/syscalls.c"
+        },
+        "example": "micro-os-plus-iii-cortexm/test/weactf411/mtp-example",
+        "support": "micro-os-plus-iii-cortexm/test/mtp",
+        "starters": [
+          "mtp-example",
+          "mtp-args"
+        ],
+        "ctest": [
+          "cortexm-weactf411-mtp-example-hwd",
+          "cortexm-weactf411-mtp-args-hwd",
+          "cortexm-weactf411-spi-stdcpp-test-hwd"
+        ],
+        "smpBoot": 0
+      }
+    ],
+    "patches": [
+      "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file",
+      "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file",
+      "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file",
+      "test/boards/weactf411/hw.sh: arm semihosting_cmdline + report file"
+    ]
+  },
+  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp",
+  "mode": "lean",
+  "minimal": true,
+  "lean": true,
+  "kernel": {
+    "id": "micro-os-plus-iii",
+    "scaffoldName": "micro-os-plus-iii-smp",
+    "version": "7.1.0",
+    "role": "kernel",
+    "buildSystem": "cmake",
+    "architecture": "portable",
+    "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp/micro-os-plus-iii-smp"
+  },
+  "projects": [
+    {
+      "id": "micro-os-plus-iii",
+      "index": 1,
+      "role": "kernel",
+      "scaffoldName": "micro-os-plus-iii-smp",
+      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp/micro-os-plus-iii-smp",
+      "buildSystem": "cmake",
+      "architecture": "portable",
+      "version": "7.1.0",
+      "tools": [
+        "cmake",
+        "git",
+        "ninja",
+        "python3"
+      ],
+      "platforms": [],
+      "boards": []
+    },
+    {
+      "id": "micro-os-plus-iii-cortexm",
+      "index": 4,
+      "role": "port",
+      "scaffoldName": "micro-os-plus-iii-cortexm",
+      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp/micro-os-plus-iii-cortexm",
+      "buildSystem": "cmake",
+      "architecture": "cortexm",
+      "version": "1.1.0",
+      "tools": [
+        "arm-none-eabi-g++",
+        "arm-none-eabi-gcc",
+        "arm-none-eabi-gdb",
+        "cmake",
+        "git",
+        "ninja",
+        "openocd",
+        "python3",
+        "qemu-system-arm"
+      ],
+      "platforms": [
+        {
+          "id": "cortexm-weactf411",
+          "board": "weactf411",
+          "project": "micro-os-plus-iii-cortexm",
+          "selectionId": "4.7",
+          "platformIndex": 7,
+          "qemu": [],
+          "hasHardwareTests": true,
+          "tests": [
+            {
+              "app": "spi-pipeline",
+              "target": "spi-pipeline",
+              "kind": "board-test",
+              "path": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/weactf411/spi-pipeline",
+              "ctestPattern": "^cortexm-weactf411-spi-pipeline-hwd$",
+              "testIndex": 5,
+              "selectionId": "4.7.5"
+            }
+          ]
+        }
+      ],
+      "boards": [
+        {
+          "id": "weactf411",
+          "hardwareRunner": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/boards/weactf411/hw.sh",
+          "openocdConfig": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/boards/weactf411/openocd.cfg",
+          "adapter": "cmsis-dap",
+          "transport": "swd",
+          "vidPid": "0x0d28 0x0204 0x1a86 0x8011",
+          "gdbServer": "disabled",
+          "preTestScript": null,
+          "tests": []
+        }
+      ]
+    }
+  ],
+  "selectedProjects": [
+    "micro-os-plus-iii-cortexm"
+  ],
+  "selectedSelections": [
+    "4.7.5"
+  ],
+  "selectedPlatforms": [
+    "cortexm-weactf411"
+  ],
+  "selectedTests": [
+    {
+      "selectionId": "4.7.5",
+      "project": "micro-os-plus-iii-cortexm",
+      "platform": "cortexm-weactf411",
+      "board": "weactf411",
+      "app": "spi-pipeline",
+      "ctestPattern": "^cortexm-weactf411-spi-pipeline-hwd$",
+      "kind": "board-test"
+    },
+    {
+      "selectionId": null,
+      "project": "micro-os-plus-iii-cortexm",
+      "platform": "cortexm-weactf411",
+      "board": "weactf411",
+      "app": "mtp-example",
+      "ctestPattern": "^cortexm-weactf411-mtp-example-hwd$",
+      "kind": "micro-test-plus"
+    },
+    {
+      "selectionId": null,
+      "project": "micro-os-plus-iii-cortexm",
+      "platform": "cortexm-weactf411",
+      "board": "weactf411",
+      "app": "mtp-args",
+      "ctestPattern": "^cortexm-weactf411-mtp-args-hwd$",
+      "kind": "micro-test-plus"
+    }
+  ],
+  "tools": {
+    "arm-none-eabi-g++": {
+      "key": "arm-none-eabi-g++",
+      "kind": "compiler",
+      "language": "C++",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-g++",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "15.2.1",
+      "rawVersion": "arm-none-eabi-g++ (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203",
+      "origin": "PATH"
+    },
+    "arm-none-eabi-gcc": {
+      "key": "arm-none-eabi-gcc",
+      "kind": "compiler",
+      "language": "C",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-gcc",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "15.2.1",
+      "rawVersion": "arm-none-eabi-gcc (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203",
+      "origin": "PATH"
+    },
+    "arm-none-eabi-gdb": {
+      "key": "arm-none-eabi-gdb",
+      "kind": "debugger",
+      "language": null,
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-gdb",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
+      "version": "16.3.90",
+      "rawVersion": "GNU gdb (xPack GNU Arm Embedded GCC x86_64) 16.3.90.20250906-git",
+      "origin": "PATH"
+    },
+    "cmake": {
+      "key": "cmake",
+      "kind": "build",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/cmake",
+      "binDir": "/usr/bin",
+      "version": "4.4.4",
+      "rawVersion": "cmake version 4.4.4",
+      "origin": "PATH",
+      "previousPaths": [
+        "/home/dan/.local/xPacks/@xpack-dev-tools/cmake/3.26.5-1.1/.content/bin/cmake",
+        "/usr/share/cmake"
+      ],
+      "reconciled": true
+    },
+    "git": {
+      "key": "git",
+      "kind": "vcs",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/git",
+      "binDir": "/usr/bin",
+      "version": "2.56.0",
+      "rawVersion": "git version 2.56.0",
+      "origin": "PATH"
+    },
+    "ninja": {
+      "key": "ninja",
+      "kind": "build",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/ninja",
+      "binDir": "/usr/bin",
+      "version": "1.13.2",
+      "rawVersion": "1.13.2",
+      "origin": "PATH",
+      "previousPaths": [
+        "/home/dan/.local/xPacks/@xpack-dev-tools/ninja-build/1.11.1-3.1/.content/bin/ninja"
+      ],
+      "reconciled": true
+    },
+    "openocd": {
+      "key": "openocd",
+      "kind": "debug-probe",
+      "language": null,
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin/openocd",
+      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin",
+      "version": "0.12.0+dev-02228-ge5888bda3-dirty",
+      "rawVersion": "xPack Open On-Chip Debugger 0.12.0+dev-02228-ge5888bda3-dirty (2025-10-04-22:42)",
+      "origin": "xPacks"
+    },
+    "python3": {
+      "key": "python3",
+      "kind": "scripting",
+      "language": null,
+      "found": true,
+      "path": "/usr/bin/python3",
+      "binDir": "/usr/bin",
+      "version": "3.14.7",
+      "rawVersion": "Python 3.14.7",
+      "origin": "PATH"
+    }
+  },
+  "libraries": {
+    "build-helper": {
+      "key": "build-helper",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@micro-os-plus/build-helper/2.17.0",
+      "version": "2.17.0",
+      "origin": "xPacks"
+    },
+    "arm-cmsis": {
+      "key": "arm-cmsis",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis/4.5.0-7",
+      "version": "4.5.0-7",
+      "origin": "xPacks"
+    },
+    "arm-cmsis-rtos-validator": {
+      "key": "arm-cmsis-rtos-validator",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis-rtos-validator/1.0.0-4",
+      "version": "1.0.0-4",
+      "origin": "xPacks"
+    },
+    "chan-fatfs": {
+      "key": "chan-fatfs",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpacks/chan-fatfs/0.13.1-5",
+      "version": "0.13.1-5",
+      "origin": "xPacks"
+    },
+    "libucontext": {
+      "key": "libucontext",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/libucontext/1.2.0-5",
+      "version": "1.2.0-5",
+      "origin": "xPacks"
+    },
+    "arm-cmsis-core": {
+      "key": "arm-cmsis-core",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/arm-cmsis-core/5.4.0-6",
+      "version": "5.4.0-6",
+      "origin": "xPacks"
+    },
+    "raspberrypi-pico-sdk": {
+      "key": "raspberrypi-pico-sdk",
+      "kind": "library",
+      "found": true,
+      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/raspberrypi-pico-sdk/1.5.1-1",
+      "version": "1.5.1-1",
+      "origin": "xPacks"
+    }
+  },
+  "build": {
+    "configurations": [
+      {
+        "name": "cortexm-weactf411-cmake-gcc-debug",
+        "project": "micro-os-plus-iii-cortexm",
+        "platform": "cortexm-weactf411",
+        "buildType": "Debug",
+        "toolchain": "arm-none-eabi-gcc",
+        "toolchainFile": "xpacks/@micro-os-plus/build-helper/cmake/toolchains/arm-none-eabi-gcc.cmake",
+        "available": [
+          "cortexm-weactf411-cmake-gcc-debug",
+          "cortexm-weactf411-cmake-gcc-release"
+        ],
+        "selectionIds": [
+          "4.7.5"
+        ],
+        "tests": [
+          {
+            "app": "spi-pipeline",
+            "selectionId": "4.7.5",
+            "ctestPattern": "^cortexm-weactf411-spi-pipeline-hwd$",
+            "kind": "board-test"
+          },
+          {
+            "app": "mtp-example",
+            "selectionId": null,
+            "ctestPattern": "^cortexm-weactf411-mtp-example-hwd$",
+            "kind": "micro-test-plus"
+          },
+          {
+            "app": "mtp-args",
+            "selectionId": null,
+            "ctestPattern": "^cortexm-weactf411-mtp-args-hwd$",
+            "kind": "micro-test-plus"
+          }
+        ],
+        "result": null
+      }
+    ],
+    "results": [],
+    "status": "pending",
+    "complete": false,
+    "verifiedAt": null
+  }
+}

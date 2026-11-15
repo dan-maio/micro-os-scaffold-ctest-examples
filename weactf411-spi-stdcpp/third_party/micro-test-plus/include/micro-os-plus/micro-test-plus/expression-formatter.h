@@ -1,0 +1,1846 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ *
+ * Major parts of the code are inspired from v1.1.8 of the Boost UT project,
+ * released under the terms of the Boost Version 1.0 Software License,
+ * which can be obtained from https://www.boost.org/LICENSE_1_0.txt.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with declarations for the µTest++ expression
+ * formatter.
+ *
+ * @details
+ * This header provides the `expression_formatter` class, which encapsulates
+ * all value-formatting logic used by the µTest++ framework. The class owns
+ * a `std::string` buffer and exposes `operator<<` overloads for every
+ * standard arithmetic type, character type, string, pointer, container,
+ * scoped enumeration, pair, tuple, optional, and framework expression
+ * type (see `extension::is_op`).
+ *
+ * By consolidating the formatting operators into a single class (using the
+ * shared `detail::append_number()` helper for numbers), the `reporter` is
+ * relieved of those responsibilities, and `detail::check_result` can
+ * pre-format expression text, when initialised, without requiring
+ * `reporter` or `test_case` to be complete at that point.
+ *
+ * The formatter shares the colour configuration of the owning `reporter`:
+ * comparator expressions are wrapped in pass/fail colour codes, which are
+ * empty strings unless the reporter enables colours.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus`
+ * namespace.
+ *
+ * This file is included by `micro-os-plus/micro-test-plus.h`, which is the
+ * header that the applications include.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_EXPRESSION_FORMATTER_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_EXPRESSION_FORMATTER_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if __has_include("micro-os-plus/project-config.h")
+#include "micro-os-plus/project-config.h"
+#endif // __has_include("micro-os-plus/project-config.h")
+
+#if __has_include("micro-os-plus/micro-test-plus-defines.h")
+#include "micro-os-plus/micro-test-plus-defines.h"
+#endif // __has_include("micro-os-plus/micro-test-plus-defines.h")
+
+#include "detail.h"
+#include "extension.h"
+
+#include <charconv>
+#include <chrono>
+#include <cstdio>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <string_view>
+#include <version>
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wpadded"
+#pragma GCC diagnostic ignored "-Waggregate-return"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+
+  namespace detail
+  {
+    // Forward definitions.
+    class check_result;
+    struct plain_text;
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+    struct named_bool;
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @brief Appends the escape sequence of a control character.
+     *
+     * @details
+     * Writes the usual escape of the character (`\\0`, `\\a`, `\\b`, `\\t`,
+     * `\\n`, `\\v`, `\\f`, or `\\r`), or `\\xHH` for the other ones. Used for
+     * the characters of the messages and of the names that would otherwise
+     * reach the console and the output files unchanged. Defined in
+     * `src/expression-formatter.cpp`.
+     *
+     * @param text The text to append to.
+     * @param c The control character.
+     */
+    void
+    append_control_escape (std::string& text, char c);
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @struct colours
+     * @brief Colours used to highlight pass and fail results in test reports.
+     *
+     * @details
+     * The `colours` structure defines ANSI escape sequences for terminal
+     * output, enabling colour-coded highlighting of test outcomes. The `pass`
+     * member specifies the colour for successful results (typically green),
+     * while the `fail` member specifies the colour for failed results
+     * (typically red). The `none` member resets the colour to the terminal
+     * default.
+     *
+     * By default all members are empty strings, so no escape sequences are
+     * emitted; reporters that support colours assign `colours_red_green`.
+     *
+     * @var colours::none
+     * ANSI escape sequence to reset the terminal colour to default.
+     * @var colours::pass
+     * ANSI escape sequence to set the terminal colour for passing results
+     * (green).
+     * @var colours::fail
+     * ANSI escape sequence to set the terminal colour for failing results
+     * (red).
+     *
+     * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+     */
+    struct colours
+    {
+      const char* none = ""; /**< @brief Terminal colour reset sequence. */
+      const char* pass
+          = ""; /**< @brief Terminal colour sequence for passing tests. */
+      const char* fail
+          = ""; /**< @brief Terminal colour sequence for failing tests. */
+    };
+
+    /**
+     * @brief Predefined colour set, with green for pass and red for fail.
+     *
+     * @details
+     * Assigned by reporters that output to a colour-capable terminal; the
+     * members are, in order, the reset, pass, and fail ANSI escape
+     * sequences.
+     */
+    inline constexpr colours colours_red_green = {
+      "\033[0m", /**< @brief Terminal colour reset sequence. */
+      "\033[32m", /**< @brief Green colour sequence for passing tests. */
+      "\033[31m" /**< @brief Red colour sequence for failing tests. */
+    };
+
+    /**
+     * @brief Predefined colour set, without escape sequences.
+     *
+     * @details
+     * Used by the formatters that write the messages of the checks, which
+     * are never coloured; all members are empty strings.
+     */
+    inline constexpr colours colours_none{};
+
+    // ========================================================================
+
+    /**
+     * @brief Formats values and expressions into an owned string buffer.
+     *
+     * @details
+     * `expression_formatter` owns a `std::string` buffer and provides
+     * `operator<<` overloads for all standard arithmetic types, character
+     * types, strings, pointers, containers, scoped enumerations (including
+     * `std::byte`), pairs, tuples, optionals, and framework expression
+     * types (see `extension::is_op`).
+     *
+     * The numeric overloads append a type suffix (e.g., `42u`, `3l`,
+     * `1.5f`, `1.5L`) and write the types that have no standard
+     * literal suffix as a cast (`(unsigned short)3`); `int` and
+     * `double` have no suffix, and the floating-point values always have
+     * a decimal point or an exponent (`42.0`), so that they can be
+     * distinguished from the integers.
+     *
+     * The same overloads also write the messages appended to the checks
+     * (`expect (...) << value`), so that a message accepts the same values
+     * as an expression, including the application types with an
+     * `operator<<` for this formatter. For the messages, `check_result`
+     * uses a formatter in the plain mode, which writes the numbers without
+     * the type suffixes and without the added decimal point (`42`, `1.5`),
+     * and the strings and the `char` values without quotes, as text, with
+     * only the control characters other than the tab and the line feed,
+     * and DEL, escaped; the other values are written as in the
+     * expressions.
+     *
+     * The class is non-copyable and non-movable to avoid accidental copying
+     * of the internal buffer.
+     *
+     * Apart from the constructors, the public members are the
+     * `operator<<` overloads and the read-only `str()`, so that the
+     * application `operator<<` functions for user-defined types can only
+     * append text. The functions that assign the buffer to a check, and
+     * return and release its text, are private, and called only by
+     * `check_result`, a friend; an application function calling them
+     * would corrupt the texts of the pending checks.
+     *
+     * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+     */
+    class expression_formatter
+    {
+      /**
+       * @brief The check result, which formats its expression and its
+       * message.
+       *
+       * @details
+       * It assigns the buffer to the checks, retrieves and releases their
+       * texts, and uses the plain mode for the messages.
+       */
+      friend class check_result;
+
+      /**
+       * @brief The plain text writer, for the names of the test cases and
+       * the operands of the application types.
+       *
+       * @details
+       * It uses the plain mode, which is private, to write the values in
+       * the names generated by `test_each()`, and, for
+       * `append_operand()`, the operands written by an application
+       * `operator<<`.
+       */
+      friend struct plain_text;
+
+    public:
+      /**
+       * @brief Constructs a formatter without colours.
+       *
+       * @details
+       * Writes the values as in the expressions of the reports, with the
+       * type suffixes, but without colours. Intended for the
+       * applications that test their own `operator<<` functions
+       * without a runner: construct a formatter, write a value, and
+       * compare `str()` with the expected text.
+       *
+       * @par Parameters
+       *   None.
+       */
+      expression_formatter (void) noexcept;
+
+      /**
+       * @brief Constructor with colour configuration.
+       *
+       * @param colours Reference to a `colours` instance for output
+       * formatting; it must outlive the formatter.
+       */
+      expression_formatter (const colours& colours) noexcept;
+
+      /**
+       * @brief Deleted copy constructor to prevent copying.
+       *
+       * @details
+       * The formatter is owned by a reporter and refers to its colours.
+       */
+      expression_formatter (const expression_formatter&) = delete;
+
+      /**
+       * @brief Deleted move constructor to prevent moving.
+       *
+       * @details
+       * The formatter is owned by a reporter and refers to its colours.
+       */
+      expression_formatter (expression_formatter&&) = delete;
+
+      /**
+       * @brief Deleted copy assignment operator to prevent copying.
+       *
+       * @details
+       * The formatter is owned by a reporter and refers to its colours.
+       */
+      expression_formatter&
+      operator= (const expression_formatter&)
+          = delete;
+
+      /**
+       * @brief Deleted move assignment operator to prevent moving.
+       *
+       * @details
+       * The formatter is owned by a reporter and refers to its colours.
+       */
+      expression_formatter&
+      operator= (expression_formatter&&)
+          = delete;
+
+      /**
+       * @brief Default destructor.
+       *
+       * @details
+       * Releases the internal buffer; the referenced colours are not owned.
+       */
+      ~expression_formatter () = default;
+
+      // ----------------------------------------------------------------------
+      // Primitive operator<< overloads.
+
+      /**
+       * @brief Appends a string view to the buffer.
+       *
+       * @details
+       * The string is written between double quotes, with the control
+       * characters, the double quote, and the backslash escaped. In the
+       * plain mode, used for the messages, it is appended without quotes,
+       * with only the control characters other than the tab and the line
+       * feed, and DEL, escaped, since they can change the state of a
+       * terminal, or truncate a text.
+       *
+       * @param sv The string view to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (std::string_view sv);
+
+      /**
+       * @brief Appends a wide string view to the buffer, as UTF-8.
+       *
+       * @details
+       * The text is converted to UTF-8 and written as a `std::string_view`
+       * is: between double quotes, with the control characters, the double
+       * quote, and the backslash escaped, or, in the plain mode, used for
+       * the messages, without quotes, with only some control characters
+       * escaped. The code units that are not valid, such
+       * as an unpaired surrogate, are written as the replacement
+       * character U+FFFD. The `wchar_t` units are taken as UTF-16 where
+       * `wchar_t` has 16 bits, and as UTF-32 otherwise.
+       *
+       * @param sv The string view to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (std::wstring_view sv);
+
+#if defined(__cpp_lib_char8_t)
+      /**
+       * @brief Appends a UTF-8 string view to the buffer.
+       *
+       * @details
+       * Written as the overload for `std::wstring_view` writes the text,
+       * the code units being the bytes of the UTF-8 text.
+       *
+       * @param sv The string view to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (std::u8string_view sv);
+#endif // defined(__cpp_lib_char8_t)
+
+      /**
+       * @brief Appends a UTF-16 string view to the buffer, as UTF-8.
+       *
+       * @details
+       * Written as the overload for `std::wstring_view` writes the text.
+       *
+       * @param sv The string view to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (std::u16string_view sv);
+
+      /**
+       * @brief Appends a UTF-32 string view to the buffer, as UTF-8.
+       *
+       * @details
+       * Written as the overload for `std::wstring_view` writes the text.
+       *
+       * @param sv The string view to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (std::u32string_view sv);
+
+      /**
+       * @brief Appends a character, as a quoted literal, to the buffer.
+       *
+       * @details
+       * The character is written between single quotes, with the
+       * non-printable characters escaped (`'a'`, `' '`, `'\\0'`,
+       * `'\\x1b'`), so that it can be identified in the reports. To
+       * write a separator without quotes, use a string (`" "`). In the
+       * plain mode, used for the messages, the character is appended
+       * without quotes, and escaped only if it is a control character
+       * other than the tab and the line feed, or DEL.
+       *
+       * @param c The character to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (char c);
+
+#if defined(__cpp_char8_t)
+      /**
+       * @brief Appends a UTF-8 code unit, as a quoted `u8` literal, to the
+       * buffer.
+       *
+       * @details
+       * The value is written with the `u8` prefix and the escapes of
+       * `char` (`u8'a'`, `u8'\\n'`); the values above `0x7F`, which are
+       * parts of the multi-byte sequences, not characters, are written
+       * as two hexadecimal digits (`u8'\\xc3'`). Without the overload,
+       * the value would be promoted to `int` and written as a number. The
+       * plain mode, used for the messages, writes it in the same way,
+       * since it cannot be appended unchanged.
+       *
+       * @param c The code unit to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (char8_t c);
+#endif // defined(__cpp_char8_t)
+
+      /**
+       * @brief Appends a UTF-16 code unit, as a quoted `u` literal, to the
+       * buffer.
+       *
+       * @details
+       * The value is written with the `u` prefix and the escapes of
+       * `char` (`u'a'`, `u'\\n'`); the other values outside ASCII are
+       * written as universal character names (`u'\\u00e9'`), and the
+       * surrogates, which are halves of the pairs, not characters, as
+       * four hexadecimal digits (`u'\\xd83d'`). Without the overload,
+       * the value would be promoted to `int` and written as a number. The
+       * plain mode, used for the messages, writes it in the same way,
+       * since it cannot be appended unchanged.
+       *
+       * @param c The code unit to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (char16_t c);
+
+      /**
+       * @brief Appends a UTF-32 character, as a quoted `U` literal, to the
+       * buffer.
+       *
+       * @details
+       * The value is written with the `U` prefix and the escapes of
+       * `char` (`U'a'`, `U'\\n'`); the other values outside ASCII are
+       * written as universal character names (`U'\\u00e9'`,
+       * `U'\\U0001f600'`), and the values that are not Unicode
+       * characters (the surrogates and the values above `0x10FFFF`) as
+       * eight hexadecimal digits (`U'\\x0000d83d'`). Without the
+       * overload, the value would be promoted to `unsigned int` and
+       * written as a number. The plain mode, used for the messages,
+       * writes it in the same way, since it cannot be appended unchanged.
+       *
+       * @param c The character to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (char32_t c);
+
+      /**
+       * @brief Appends a wide character, as a quoted `L` literal, to the
+       * buffer.
+       *
+       * @details
+       * The value is written with the `L` prefix, as a `char16_t` value
+       * where `wchar_t` has 16 bits (Windows), and as a `char32_t` value
+       * elsewhere (`L'a'`, `L'\\u00e9'`); a negative value is written
+       * by its bits. Without the overload, the value would be promoted
+       * to an integer type and written as a number. The plain mode, used
+       * for the messages, writes it in the same way, since it cannot be
+       * appended unchanged.
+       *
+       * @param c The character to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (wchar_t c);
+
+      /**
+       * @brief Appends the text of a null-terminated C string of any
+       * character type.
+       *
+       * @details
+       * Selected for the pointers to the character types (`char`,
+       * `wchar_t`, `char8_t`, `char16_t`, and `char32_t`, possibly
+       * `const`), including the string literals when they are passed
+       * through a pointer; the arrays are written by the overload for
+       * arrays, which does not read beyond the array. A null pointer is
+       * rendered as `"nullptr"`. The text must be null-terminated.
+       *
+       * The `char` text is appended without quotes, with only the control
+       * characters other than the tab and the line feed, and DEL,
+       * escaped, in both modes, since this is how the string literals are
+       * written by the `operator<<` functions of the applications, for
+       * example for separators. The `char` pointers that are values to be
+       * reported, such as the operands of the comparators and the elements
+       * of the ranges, pairs, tuples, and optionals, are written quoted,
+       * like the `std::string` values, by the overload for
+       * `basic_c_string`; an application writes a quoted value with a
+       * `std::string_view`.
+       *
+       * The text of the pointers and of the arrays of the wide character
+       * types is converted to UTF-8 and written as the `char` text is, in
+       * both modes, without quotes, so that the string literals of these
+       * types can be used by the applications, for example as separators.
+       * As operands of the comparators, these pointers and arrays are
+       * reported quoted, like the `std::wstring` values, by the overload
+       * for `basic_c_string`.
+       *
+       * @tparam Pointer_T The pointer type; it satisfies
+       * `detail::character_pointer`.
+       * @param s The C string, or a null pointer.
+       * @return Reference to this instance.
+       */
+      template <typename Pointer_T>
+        requires detail::character_pointer<Pointer_T>
+      expression_formatter&
+      operator<< (Pointer_T s);
+
+      /**
+       * @brief Appends the text held by an array of characters.
+       *
+       * @details
+       * Selected for the arrays of the character types, including the
+       * string literals, but not for the `volatile` characters, whose
+       * arrays are written as the pointers they decay to are. The text
+       * ends at the first null character or at
+       * the end of the array, whichever comes first, so that an array
+       * that is full, without a terminator, such as a fixed-size name
+       * field, is not read beyond its end. Otherwise it is written as the
+       * overload for the character pointers writes the text of a pointer.
+       *
+       * @tparam Char_T The character type; it satisfies
+       * `detail::character`, and is not `volatile`.
+       * @tparam N The number of elements of the array.
+       * @param s The array.
+       * @return Reference to this instance.
+       */
+      template <typename Char_T, std::size_t N>
+        requires (detail::character<Char_T> and not std::is_volatile_v<Char_T>)
+      expression_formatter&
+      operator<< (const Char_T (&s)[N]);
+
+      /**
+       * @brief Appends a C string operand of a comparator.
+       *
+       * @details
+       * Quoted and escaped as a string view of the character type (with
+       * the prefix of the wide and Unicode strings); a null pointer is
+       * written as `nullptr`.
+       *
+       * @tparam Char_T The character type of the operand.
+       * @param s The operand.
+       * @return Reference to this instance.
+       */
+      template <character Char_T>
+      expression_formatter&
+      operator<< (const basic_c_string<Char_T>& s);
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+      /**
+       * @brief Appends the name of a named boolean constant.
+       *
+       * @details
+       * The constant, created by the `_b` literal, is reported by its
+       * name, not by its value, which is always `true`.
+       *
+       * @param b The named boolean constant.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (const named_bool& b);
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+      /**
+       * @brief Appends the string representation of a boolean value.
+       *
+       * @param v The boolean value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (bool v);
+
+      /**
+       * @brief Appends the string `"nullptr"`.
+       *
+       * @return Reference to this instance.
+       */
+      expression_formatter& operator<< (std::nullptr_t);
+
+      /**
+       * @brief Appends the string `"nullopt"`.
+       *
+       * @details
+       * Selected for `std::nullopt`, so that an optional value can be
+       * compared with it (`eq (opt, std::nullopt)`).
+       *
+       * @return Reference to this instance.
+       */
+      expression_formatter& operator<< (std::nullopt_t);
+
+      /**
+       * @brief Appends a signed char value, as a cast.
+       *
+       * @param c The signed char value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (signed char c);
+
+      /**
+       * @brief Appends an unsigned char value, as a cast.
+       *
+       * @param c The unsigned char value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (unsigned char c);
+
+      /**
+       * @brief Appends a signed short value, as a cast.
+       *
+       * @param v The signed short value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (signed short v);
+
+      /**
+       * @brief Appends an unsigned short value, as a cast.
+       *
+       * @param v The unsigned short value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (unsigned short v);
+
+      /**
+       * @brief Appends a signed int value (no suffix).
+       *
+       * @param v The signed int value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (signed int v);
+
+      /**
+       * @brief Appends an unsigned int value with type suffix `"u"`.
+       *
+       * @param v The unsigned int value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (unsigned int v);
+
+      /**
+       * @brief Appends a signed long value with type suffix `"l"`.
+       *
+       * @param v The signed long value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (signed long v);
+
+      /**
+       * @brief Appends an unsigned long value with type suffix `"ul"`.
+       *
+       * @param v The unsigned long value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (unsigned long v);
+
+      /**
+       * @brief Appends a signed long long value with type suffix `"ll"`.
+       *
+       * @param v The signed long long value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (signed long long v);
+
+      /**
+       * @brief Appends an unsigned long long value with type suffix `"ull"`.
+       *
+       * @param v The unsigned long long value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (unsigned long long v);
+
+      /**
+       * @brief Appends a float value with type suffix `"f"`.
+       *
+       * @details
+       * An integral value is written with a decimal point (`42.0f`); the
+       * infinities and the NaNs are written without the suffix.
+       *
+       * @param v The float value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (float v);
+
+      /**
+       * @brief Appends a double value (no suffix).
+       *
+       * @details
+       * An integral value is written with a decimal point (`42.0`), to
+       * distinguish it from an `int`.
+       *
+       * @param v The double value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (double v);
+
+      /**
+       * @brief Appends a long double value with type suffix `"L"`.
+       *
+       * @details
+       * An integral value is written with a decimal point (`42.0L`); the
+       * infinities and the NaNs are written without the suffix.
+       *
+       * @param v The long double value.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (long double v);
+
+      // ----------------------------------------------------------------------
+      // Template operator<< overloads.
+
+      /**
+       * @brief Appends the hexadecimal address of a pointer.
+       *
+       * @details
+       * Null pointers are rendered as `"0x0"`. Non-null pointers are
+       * formatted with `snprintf` using the `%p` specifier.
+       *
+       * The pointers to the character types are excluded, so that they
+       * are written as strings by the overload for the character
+       * pointers; the `signed char` and `unsigned char` pointers, usually
+       * byte buffers, are written as addresses.
+       *
+       * @tparam T The type pointed to, other than a character type.
+       * @param v The pointer value.
+       * @return Reference to this instance.
+       */
+      template <typename T>
+        requires (not detail::character_pointer<T*>)
+      expression_formatter&
+      operator<< (T* v);
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+      /**
+       * @brief Appends the value of a framework value wrapper via
+       * `detail::unwrap()`.
+       *
+       * @details
+       * Only the wrappers with a `get()` accessor (the `to_*` wrappers and
+       * the literals) are accepted. Any other type satisfying
+       * `extension::is_op` must have its own overload, as the built-in
+       * expressions and `extension::compare_op` and
+       * `extension::predicate_op` have; without it, `detail::unwrap()`
+       * would return the expression itself, and this overload would call
+       * itself without end, so such a type is rejected at compile time.
+       *
+       * @tparam T A value wrapper type satisfying `extension::is_op<T>`,
+       * with a `get()` accessor.
+       * @param t The value wrapper.
+       * @return Reference to this instance.
+       */
+      template <class T>
+        requires (extension::is_op<T> and requires (const T& v) { v.get (); })
+      expression_formatter&
+      operator<< (const T& t);
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+      /**
+       * @brief Appends a container's elements enclosed in braces.
+       *
+       * @details
+       * Elements are formatted as `{ e1, e2, … }` by iterating the
+       * container and recursing through `operator<<` for each element.
+       * Only the first 16 elements are written, followed by
+       * `", ... (<count> elements)"` if there are more; the elements of
+       * the types `signed char` and `unsigned char` are written as
+       * plain numbers, without the type suffix.
+       *
+       * @tparam T A range type satisfying `detail::formattable_range`:
+       * with `begin()` and `end()` members or functions, not an array,
+       * not a string, without elements of its own type, and with
+       * printable elements.
+       * @param t The container.
+       * @return Reference to this instance.
+       */
+      template <class T>
+        requires detail::formattable_range<T>
+      expression_formatter&
+      operator<< (const T& t);
+
+      /**
+       * @brief Appends the underlying value of a scoped enumeration.
+       *
+       * @details
+       * The value is converted to the underlying type and formatted as
+       * that type, with its suffix (for example `1` for an `int` and
+       * `(unsigned char)1` for `std::byte`, whose underlying type is
+       * `unsigned char`).
+       *
+       * The unscoped enumerations are not selected, since they convert
+       * implicitly to an integer, and are formatted as one.
+       *
+       * An `operator<<` defined by the application for an enumeration,
+       * for example to write the names of the enumerators, is preferred
+       * to this template.
+       *
+       * @tparam T A scoped enumeration type.
+       * @param v The enumeration value.
+       * @return Reference to this instance.
+       */
+      template <class T>
+        requires (std::is_enum_v<T>
+                  and not std::is_convertible_v<T, std::underlying_type_t<T>>)
+      expression_formatter&
+      operator<< (T v);
+
+      /**
+       * @brief Appends the members of a pair, as `(first, second)`.
+       *
+       * @details
+       * Each member is formatted through `operator<<`, so the pairs
+       * stored in the maps are also formatted, as `{(1, 2), (3, 4)}`.
+       * The overload takes part in the overload resolution only if both
+       * members are printable, so that `extension::printable` is false
+       * for a pair that cannot be written.
+       *
+       * @tparam T1 The type of the first member.
+       * @tparam T2 The type of the second member.
+       * @param p The pair.
+       * @return Reference to this instance.
+       */
+      template <class T1, class T2>
+        requires (extension::printable<T1> and extension::printable<T2>)
+      expression_formatter&
+      operator<< (const std::pair<T1, T2>& p);
+
+      /**
+       * @brief Appends the elements of a tuple, as `(e1, e2, …)`.
+       *
+       * @details
+       * Each element is formatted through `operator<<`; an empty tuple is
+       * written as `()`. The overload takes part in the overload
+       * resolution only if all the elements are printable.
+       *
+       * @tparam Ts The types of the elements.
+       * @param t The tuple.
+       * @return Reference to this instance.
+       */
+      template <class... Ts>
+        requires (extension::printable<Ts> and ...)
+      expression_formatter&
+      operator<< (const std::tuple<Ts...>& t);
+
+      /**
+       * @brief Appends the value of an optional, or `nullopt`.
+       *
+       * @details
+       * A value is formatted through `operator<<`, as the contained type,
+       * so an optional with a value is written as the value alone; an
+       * optional without a value is written as `nullopt`. The overload
+       * takes part in the overload resolution only if the contained type
+       * is printable.
+       *
+       * @tparam T The type of the contained value.
+       * @param o The optional.
+       * @return Reference to this instance.
+       */
+      template <class T>
+        requires extension::printable<T>
+      expression_formatter&
+      operator<< (const std::optional<T>& o);
+
+      /**
+       * @brief Appends a duration, as the count followed by the unit.
+       *
+       * @details
+       * The count is written without a type suffix, followed by the
+       * unit: `ns`, `us`, `ms`, `s`, `min`, or `h` for the standard
+       * periods, or the ratio, as `[N/D]s`, for the other ones. The
+       * overload takes part in the overload resolution only if the count
+       * is an arithmetic type.
+       *
+       * @tparam Rep The type of the count.
+       * @tparam Period The period of the duration.
+       * @param d The duration.
+       * @return Reference to this instance.
+       */
+      template <class Rep, class Period>
+        requires std::is_arithmetic_v<Rep>
+      expression_formatter&
+      operator<< (const std::chrono::duration<Rep, Period>& d);
+
+      // ----------------------------------------------------------------------
+      // Compound expression operator<< overloads (with pass/fail colours).
+
+      /**
+       * @brief Formats a relational comparison as `lhs op rhs`.
+       *
+       * @details
+       * The operator symbol is taken from the tag (for example `==` for
+       * `detail::equal_to`).
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @tparam Compare_T The tag that defines the comparison.
+       * @param op The comparison expression.
+       * @return Reference to this instance.
+       */
+      template <class Lhs_T, class Rhs_T, class Compare_T>
+      expression_formatter&
+      operator<< (const detail::compare_op<Lhs_T, Rhs_T, Compare_T>& op);
+
+      /**
+       * @brief Formats an approximate comparison as
+       * `lhs ~ (rhs +/- epsilon)`.
+       *
+       * @details
+       * The notation is the one used by Boost UT, in ASCII, so that it is
+       * also valid in the TAP output.
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @tparam Epsilon_T Tolerance type.
+       * @param op The comparison expression.
+       * @return Reference to this instance.
+       */
+      template <class Lhs_T, class Rhs_T, class Epsilon_T>
+      expression_formatter&
+      operator<< (const detail::approx_op<Lhs_T, Rhs_T, Epsilon_T>& op);
+
+      /**
+       * @brief Formats a logical AND as `(lhs and rhs)`.
+       *
+       * @details
+       * A chain of ANDs, as built by `all_of()` for more than two operands,
+       * is written as a single group, `(a and b and c)`.
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @param op The logical AND expression.
+       * @return Reference to this instance.
+       */
+      template <class Lhs_T, class Rhs_T>
+      expression_formatter&
+      operator<< (const detail::and_op<Lhs_T, Rhs_T>& op);
+
+      /**
+       * @brief Formats a logical OR as `(lhs or rhs)`.
+       *
+       * @details
+       * A chain of ORs, as built by `any_of()` for more than two operands,
+       * is written as a single group, `(a or b or c)`.
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @param op The logical OR expression.
+       * @return Reference to this instance.
+       */
+      template <class Lhs_T, class Rhs_T>
+      expression_formatter&
+      operator<< (const detail::or_op<Lhs_T, Rhs_T>& op);
+
+      /**
+       * @brief Formats a logical NOT as `not operand`.
+       *
+       * @details
+       * A negated comparison is written between parentheses
+       * (`not (a == b)`), so that the negation is not read as applying
+       * to the left operand only.
+       *
+       * @tparam T The operand type.
+       * @param op The logical NOT expression.
+       * @return Reference to this instance.
+       */
+      template <class T>
+      expression_formatter&
+      operator<< (const detail::not_op<T>& op);
+
+      /**
+       * @brief Formats a unary predicate as `symbol operand`.
+       *
+       * @details
+       * The symbol is the one of the tag, written as defined by the
+       * application, so it includes the separating space.
+       *
+       * @tparam T The operand type.
+       * @tparam Predicate_T The tag that defines the predicate.
+       * @param op The predicate expression.
+       * @return Reference to this instance.
+       */
+      template <class T, class Predicate_T>
+      expression_formatter&
+      operator<< (const detail::predicate_op<T, Predicate_T>& op);
+
+#if defined(__cpp_exceptions)
+
+      /**
+       * @brief Formats a throws expression as `throws<TypeName>`, or as
+       * `throws` when any exception is expected.
+       *
+       * @details
+       * If the check failed, the reason is appended (see
+       * `append_throw_reason()`).
+       *
+       * @tparam Exception_T The expected exception type, or `void` for
+       * any exception.
+       * @param op The throws expression.
+       * @return Reference to this instance.
+       */
+      template <class Exception_T>
+      expression_formatter&
+      operator<< (const detail::throws_op<Exception_T>& op);
+
+      /**
+       * @brief Formats a nothrow expression as `nothrow`.
+       *
+       * @details
+       * If the check failed, the reason is appended (see
+       * `append_throw_reason()`).
+       *
+       * @param op The nothrow expression.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (const detail::nothrow_op& op);
+
+#endif // defined(__cpp_exceptions)
+
+      // ----------------------------------------------------------------------
+
+      /**
+       * @brief Returns the text written to the formatter.
+       *
+       * @details
+       * Intended for testing the application `operator<<` functions with
+       * a formatter constructed for this purpose; since the formatter only
+       * appends, the text of each value starts where the previous one
+       * ended. The text cannot be modified through this reference.
+       *
+       * @par Parameters
+       *   None.
+       * @return Const reference to the accumulated string.
+       */
+      [[nodiscard]] const std::string&
+      str (void) const noexcept;
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+      /**
+       * @name Deprecated Functions
+       * @{
+       */
+
+      /**
+       * @brief Deprecated access to the text as a C string.
+       *
+       * @details
+       * Forwards to `str().c_str()`. The other buffer accessors of
+       * v5.0.1 (`clear()`, `append()`, and `reserve()`) were removed,
+       * since they allowed an application `operator<<` to alter the
+       * texts of the pending checks.
+       *
+       * @par Parameters
+       *   None.
+       * @return A pointer to the null-terminated text.
+       */
+      [[deprecated ("use str().c_str() (since 6.0.0)"), nodiscard]] const char*
+      c_str (void) const noexcept;
+
+      /**
+       * @brief Deprecated test for an empty text.
+       *
+       * @details
+       * Forwards to `str().empty()`.
+       *
+       * @par Parameters
+       *   None.
+       * @retval true The formatter holds no text.
+       * @retval false The formatter holds some text.
+       */
+      [[deprecated ("use str().empty() (since 6.0.0)"), nodiscard]] bool
+      empty (void) const noexcept;
+
+      /**
+       * @}
+       */
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_DEPRECATED_ENABLED)
+
+    private:
+      /**
+       * @brief An ANSI colour escape sequence, to be written as it is.
+       *
+       * @details
+       * A distinct type, so that the sequences are not written by the
+       * overloads for strings, which escape the control characters, ESC
+       * included.
+       */
+      struct colour_code
+      {
+        /**
+         * @brief The null-terminated escape sequence, possibly empty.
+         *
+         * @details
+         * Not owned; it points into the `colours` of the formatter.
+         */
+        const char* sequence;
+      };
+
+      /**
+       * @brief The maximum number of elements of a range written.
+       *
+       * @details
+       * Limits the size of the report of a check on a large container,
+       * which is held in memory (and, in TAP, copied) until reported.
+       */
+      static constexpr size_t max_range_elements_ = 16;
+
+      /**
+       * @brief Appends the text of a C string held in a buffer of a known
+       * capacity.
+       *
+       * @details
+       * The text ends at the first null character or after @p capacity
+       * characters, whichever comes first. A null pointer is written as
+       * `"nullptr"`. The text is written without quotes, with the
+       * control characters escaped, in both modes; the text of the other
+       * character types is first converted to UTF-8. Shared by the
+       * overloads for the character pointers (unbounded capacity) and for
+       * the arrays.
+       *
+       * @param s The text, or a null pointer.
+       * @param capacity The number of characters that may be read, or
+       * `std::string_view::npos` if the text is null-terminated.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_c_string (const char* s, std::size_t capacity);
+
+      /**
+       * @brief Appends the text of a wide C string held in a buffer of a
+       * known capacity.
+       *
+       * @details
+       * As the overload for `char`, with the text converted to UTF-8
+       * first.
+       *
+       * @param s The text, or a null pointer.
+       * @param capacity The number of characters that may be read, or
+       * `std::string_view::npos` if the text is null-terminated.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_c_string (const wchar_t* s, std::size_t capacity);
+
+#if defined(__cpp_lib_char8_t)
+      /**
+       * @brief Appends the text of a UTF-8 C string held in a buffer of a
+       * known capacity.
+       *
+       * @details
+       * As the overload for `char`, with the text converted to UTF-8
+       * first.
+       *
+       * @param s The text, or a null pointer.
+       * @param capacity The number of characters that may be read, or
+       * `std::string_view::npos` if the text is null-terminated.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_c_string (const char8_t* s, std::size_t capacity);
+#endif // defined(__cpp_lib_char8_t)
+
+      /**
+       * @brief Appends the text of a UTF-16 C string held in a buffer of a
+       * known capacity.
+       *
+       * @details
+       * As the overload for `char`, with the text converted to UTF-8
+       * first.
+       *
+       * @param s The text, or a null pointer.
+       * @param capacity The number of characters that may be read, or
+       * `std::string_view::npos` if the text is null-terminated.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_c_string (const char16_t* s, std::size_t capacity);
+
+      /**
+       * @brief Appends the text of a UTF-32 C string held in a buffer of a
+       * known capacity.
+       *
+       * @details
+       * As the overload for `char`, with the text converted to UTF-8
+       * first.
+       *
+       * @param s The text, or a null pointer.
+       * @param capacity The number of characters that may be read, or
+       * `std::string_view::npos` if the text is null-terminated.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_c_string (const char32_t* s, std::size_t capacity);
+
+      /**
+       * @brief Constructs a formatter in the plain mode, for a message.
+       *
+       * @details
+       * Used only by `check_result` and `plain_text`, which move their
+       * text into the buffer, append a value, and move the text back, so
+       * that no other buffer is allocated. The plain mode writes the numbers
+       * without the type suffixes and without the added decimal point,
+       * and the strings and the `char` values without quotes, with only
+       * some control characters escaped; the messages are never coloured.
+       *
+       * @param buffer The text to which the values are appended.
+       */
+      explicit expression_formatter (std::string&& buffer) noexcept;
+
+      // ----------------------------------------------------------------------
+      // Ownership by the checks.
+
+      /**
+       * @brief Prepares the buffer for the expression of a new check.
+       *
+       * @details
+       * If the text in the buffer belongs to a check that was not reported
+       * yet (it was created by a function called in the arguments of this
+       * check, and is reported at the end of the statement), the text is
+       * first moved aside, so that this check can still report it. The
+       * buffer is then cleared and assigned to @p owner.
+       *
+       * @param owner The check that will format its expression next.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      begin_check (const void* owner);
+
+      /**
+       * @brief Returns the expression text of a check.
+       *
+       * @param owner The check that formatted the expression.
+       * @return The text in the buffer, if it still belongs to @p owner,
+       * otherwise the text moved aside for it; it remains valid until
+       * `end_check()`.
+       */
+      [[nodiscard]] const std::string&
+      check_text (const void* owner) const noexcept;
+
+      /**
+       * @brief Releases the expression text of a check, after it was
+       * reported.
+       *
+       * @param owner The check that formatted the expression.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      end_check (const void* owner) noexcept;
+
+      // ----------------------------------------------------------------------
+
+      /**
+       * @brief Selects the appropriate colour code based on a condition.
+       *
+       * @param cond Boolean value indicating pass (true) or fail (false).
+       * @return The corresponding ANSI colour code.
+       */
+      [[nodiscard]] inline colour_code
+      colour (const bool cond) const;
+
+      /**
+       * @brief Returns the colour code that resets the colour.
+       *
+       * @par Parameters
+       *   None.
+       * @return The reset code of the colours of the formatter.
+       */
+      [[nodiscard]] inline colour_code
+      colour_none (void) const;
+
+      /**
+       * @brief Appends a colour code, as it is.
+       *
+       * @details
+       * The escape sequence is not escaped, unlike the text of the
+       * strings; the sequences are empty when the colours are not used.
+       *
+       * @param code The colour code to append.
+       * @return Reference to this instance.
+       */
+      expression_formatter&
+      operator<< (colour_code code);
+
+      /**
+       * @brief Adds a decimal point to a floating-point value formatted
+       * as an integer.
+       *
+       * @details
+       * Called after a floating-point value was appended to the buffer;
+       * `".0"` is appended only if the value was written with digits
+       * only, and not in the plain mode.
+       *
+       * @param start The position in the buffer where the value begins.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_decimal_point (std::size_t start);
+
+      /**
+       * @brief Appends the type suffix of a number.
+       *
+       * @details
+       * Called after a number was appended to the buffer; in the plain
+       * mode, used for the messages, nothing is appended.
+       *
+       * @param suffix The suffix of the type (e.g. `"u"`, `"ll"`, `"f"`).
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_suffix (const char* suffix);
+
+      /**
+       * @brief Prefixes a number with its type, written as a cast.
+       *
+       * @details
+       * Called after a number was appended to the buffer, for the types
+       * that have no standard literal suffix (`signed char`, `unsigned
+       * char`, `short`, and `unsigned short`); in the plain mode, used for
+       * the messages, nothing is inserted.
+       *
+       * @param start The position of the first character of the number
+       * in the buffer.
+       * @param type The cast, with the parentheses (e.g.
+       * `"(unsigned short)"`).
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      prepend_cast (std::size_t start, const char* type);
+
+      /**
+       * @brief Appends a character, or a code unit, as a quoted literal.
+       *
+       * @details
+       * Shared by the overloads of all the character types, so that they
+       * escape the values in the same way. The usual escape sequences are
+       * used for `'\\0'`, `'\\a'`, `'\\b'`, `'\\t'`, `'\\n'`, `'\\v'`,
+       * `'\\f'`, `'\\r'`, `'\\''`, and `'\\\\'`, and the other control
+       * characters and `DEL` are written as two hexadecimal digits
+       * (`'\\x1b'`). The values that are not characters by themselves
+       * (the values above `0x7F` of the 8-bit types, the surrogates, and
+       * the values above `0x10FFFF`) are written with `\\x` and all the
+       * hexadecimal digits of their type, and the other values outside
+       * ASCII as universal character names, `\\u` with four digits, or
+       * `\\U` with eight. The printable ASCII characters are written
+       * unchanged. The hexadecimal digits are lowercase.
+       *
+       * @param prefix The prefix of the literal (`""`, `"u8"`, `"u"`,
+       * `"U"`, or `"L"`).
+       * @param code The value, converted without the sign extension.
+       * @param size The size of the character type, in bytes.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_character (std::string_view prefix, char32_t code,
+                        std::size_t size);
+
+      /**
+       * @brief Appends an element of a range, pair, tuple, or optional.
+       *
+       * @details
+       * Writes the `char` pointers as quoted C strings, so that an element
+       * is reported like a `std::string` one, and passes all the other
+       * values to their `operator<<`. The strings written by the
+       * `operator<<` of the application types are not affected.
+       *
+       * @tparam T The type of the element.
+       *
+       * @param value The element.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+      void
+      append_value (const T& value);
+
+      /**
+       * @brief Appends an operand of an expression.
+       *
+       * @details
+       * An operand that the formatter has a member `operator<<` for is
+       * written by it, unless the application defines a free `operator<<`
+       * for the type. An operand of an application type, found by
+       * argument-dependent lookup, is written in the plain mode, as the
+       * messages are, so that the values that its `operator<<` writes
+       * are shown as it writes them, without the type suffixes and the
+       * quotes; this includes the scoped enumerations and the types with
+       * `begin()` and `end()` for which the application defines an
+       * `operator<<`.
+       *
+       * @tparam T The type of the operand.
+       *
+       * @param value The operand.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+      void
+      append_operand (const T& value);
+
+      /**
+       * @brief Appends the elements of a tuple-like object, separated by
+       * commas.
+       *
+       * @details
+       * Shared by the pair and tuple overloads; the elements are obtained
+       * with `std::get<Is>()` and formatted through `operator<<`, without
+       * the enclosing parentheses.
+       *
+       * @tparam Tuple_T A type accepted by `std::get` (a pair or a tuple).
+       * @tparam Is The indices of the elements.
+       * @param t The tuple-like object.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Tuple_T, std::size_t... Is>
+      void
+      append_elements (const Tuple_T& t, std::index_sequence<Is...>);
+
+      /**
+       * @brief Appends the index of the first difference of two ranges,
+       * if it is not among the elements written.
+       *
+       * @details
+       * A range is written with at most `max_range_elements_` elements,
+       * so a difference after them is not visible in the report. The
+       * elements are compared in step, and, if the first difference is at
+       * an index not written, the text `" (first difference at index
+       * <index>)"` is appended. A range that is a prefix of the other
+       * differs at its size. Nothing is appended if the ranges do not
+       * differ, or if the difference is among the elements written.
+       *
+       * @tparam Lhs_T Left-hand range type.
+       * @tparam Rhs_T Right-hand range type.
+       * @param lhs The left-hand range.
+       * @param rhs The right-hand range.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Lhs_T, class Rhs_T>
+      void
+      append_first_difference (const Lhs_T& lhs, const Rhs_T& rhs);
+
+#if defined(__cpp_exceptions)
+      /**
+       * @brief Appends the reason why a check of the exceptions failed.
+       *
+       * @details
+       * Nothing if the check passed. Otherwise `, but nothing was thrown`,
+       * `, but a std::exception was thrown: "what"`, or `, but an
+       * exception of unknown type was thrown`. Defined inline, like the
+       * `operator<<` overloads that call it.
+       *
+       * @param op The expression of the check.
+       * @par Returns
+       *   Nothing.
+       */
+      void
+      append_throw_reason (const detail::callable_op& op);
+#endif // defined(__cpp_exceptions)
+
+      /**
+       * @brief Appends an operand of a chain of logical ANDs.
+       *
+       * @details
+       * An operand that is itself a logical AND is written as the
+       * operands of a chain, without its own parentheses; any other
+       * operand is written as usual.
+       *
+       * @tparam T The type of the operand.
+       * @param t The operand.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+      void
+      append_and_operand (const T& t);
+
+      /**
+       * @brief Appends the operands of a logical AND, separated by `and`.
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @param op The logical AND expression.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Lhs_T, class Rhs_T>
+      void
+      append_and_operand (const detail::and_op<Lhs_T, Rhs_T>& op);
+
+      /**
+       * @brief Appends an operand of a chain of logical ORs.
+       *
+       * @details
+       * Like `append_and_operand()`, for the logical OR.
+       *
+       * @tparam T The type of the operand.
+       * @param t The operand.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+      void
+      append_or_operand (const T& t);
+
+      /**
+       * @brief Appends the operands of a logical OR, separated by `or`.
+       *
+       * @tparam Lhs_T Left-hand operand type.
+       * @tparam Rhs_T Right-hand operand type.
+       * @param op The logical OR expression.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Lhs_T, class Rhs_T>
+      void
+      append_or_operand (const detail::or_op<Lhs_T, Rhs_T>& op);
+
+      /**
+       * @brief Appends the operand of a negation.
+       *
+       * @details
+       * Written as `append_operand()` writes it. A comparison, which has
+       * its operator between the operands, is written between
+       * parentheses, so that `not (a == b)` is not read as
+       * `(not a) == b`. The logical combinations write their own
+       * parentheses, and the predicates, written as a prefix, and the
+       * plain Boolean values do not need them.
+       *
+       * @tparam T The type of the operand.
+       *
+       * @param t The operand.
+       * @param outer_colour The colour of the negation, used by the
+       * overloads that write parentheses; ignored here.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+      void
+      append_not_operand (const T& t, colour_code outer_colour);
+
+      /**
+       * @brief Appends a comparison that is the operand of a negation,
+       * between parentheses.
+       *
+       * @tparam Lhs_T The type of the left hand side operand.
+       * @tparam Rhs_T The type of the right hand side operand.
+       * @tparam Compare_T The tag of the comparison.
+       *
+       * @param op The comparison.
+       * @param outer_colour The colour of the negation, in which the
+       * parentheses are written.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Lhs_T, class Rhs_T, class Compare_T>
+      void
+      append_not_operand (
+          const detail::compare_op<Lhs_T, Rhs_T, Compare_T>& op,
+          colour_code outer_colour);
+
+      /**
+       * @brief Appends an approximate comparison that is the operand of a
+       * negation, between parentheses.
+       *
+       * @tparam Lhs_T The type of the left hand side operand.
+       * @tparam Rhs_T The type of the right hand side operand.
+       * @tparam Epsilon_T The type of the tolerance.
+       *
+       * @param op The approximate comparison.
+       * @param outer_colour The colour of the negation, in which the
+       * parentheses are written.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class Lhs_T, class Rhs_T, class Epsilon_T>
+      void
+      append_not_operand (const detail::approx_op<Lhs_T, Rhs_T, Epsilon_T>& op,
+                          colour_code outer_colour);
+
+      /**
+       * @brief ANSI colour codes for output formatting.
+       *
+       * @details
+       * A reference to the colours of the owning reporter, so that later
+       * changes (e.g. enabling colours) are picked up automatically.
+       */
+      const colours& colours_;
+
+      /**
+       * @brief The internal output buffer.
+       *
+       * @details
+       * Accumulates the formatted text; cleared by `begin_check()`.
+       */
+      std::string buffer_{};
+
+      /**
+       * @brief The check whose expression is in the buffer.
+       *
+       * @details
+       * Set by `begin_check()` and reset by `end_check()`; `nullptr` when
+       * the text in the buffer does not belong to a pending check.
+       */
+      const void* owner_{ nullptr };
+
+      /**
+       * @brief The expression texts of the pending checks whose buffer was
+       * reused.
+       *
+       * @details
+       * Normally empty: a check is reported at the end of its statement,
+       * before the next check begins. Only when a check begins while an
+       * earlier one is not yet reported, as when the arguments of a check
+       * call a function that makes its own checks, is the text of the
+       * earlier check moved here, keyed by the check, so that the check
+       * objects themselves do not need to own a copy, which would increase
+       * the stack usage of the test functions.
+       */
+      std::vector<std::pair<const void*, std::string>> pending_{};
+
+      /**
+       * @brief Whether the formatter writes a message.
+       *
+       * @details
+       * Set only by the private constructor, used by `check_result` and
+       * by `plain_text`; in this mode the numbers have no type suffixes
+       * and no added decimal point, and the strings and the `char` values
+       * are not quoted.
+       */
+      const bool plain_{ false };
+    };
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @brief Writes values as text, as the messages of the checks are
+     * written.
+     *
+     * @details
+     * Gives access to the plain mode of the `expression_formatter`, which
+     * is private, so that the names of the test cases generated by
+     * `test_each()` show their values as the messages do: the numbers
+     * without the type suffixes, and the strings and the characters
+     * unquoted. Also used by `expression_formatter::append_operand()`
+     * for the operands of the application types, so that their
+     * `operator<<` writes them as it writes them in the messages.
+     *
+     * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+     */
+    struct plain_text
+    {
+      /**
+       * @brief Appends a value to a text, in the plain mode of the
+       * formatter.
+       *
+       * @details
+       * The text is moved into a local formatter, the value is appended,
+       * and the text is moved back, so that no other buffer is allocated.
+       *
+       * @tparam T The type of the value, which must satisfy
+       * `extension::printable`.
+       *
+       * @param text The text to which the value is appended.
+       * @param value The value to append.
+       * @par Returns
+       *   Nothing.
+       */
+      template <class T>
+        requires extension::printable<T>
+      static void
+      append (std::string& text, const T& value);
+    };
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @brief Concept satisfied by the types that the formatter writes
+     * with one of its own member functions `operator<<`.
+     *
+     * @details
+     * The types that satisfy `extension::printable` but not this concept
+     * are the application types, written by a free `operator<<` found by
+     * argument-dependent lookup. A type may satisfy both, if it is
+     * accepted by a template of the formatter (a scoped enumeration, or
+     * a type with `begin()` and `end()`) and the application also defines
+     * an `operator<<` for it; see `free_printable`.
+     *
+     * @tparam T The type to check.
+     */
+    template <class T>
+    concept member_printable
+        = requires (expression_formatter& formatter, const T& value) {
+            formatter.operator<< (value);
+          };
+
+    /**
+     * @brief Concept satisfied by the types that have a free `operator<<`
+     * for the formatter.
+     *
+     * @details
+     * Satisfied when the call `operator<< (formatter, value)` is valid,
+     * which looks for free functions only, by argument-dependent lookup,
+     * so it does not see the member functions of the formatter. The
+     * framework defines no free `operator<<` for the formatter; the
+     * ones found are those of the application. They take precedence
+     * over the templates of the formatter for the scoped enumerations
+     * and for the types with `begin()` and `end()`, which would be
+     * written by the formatter if the application did not define its
+     * own function, so that the application controls the text of its
+     * type.
+     *
+     * @tparam T The type to check.
+     */
+    template <class T>
+    concept free_printable
+        = requires (expression_formatter& formatter, const T& value) {
+            operator<< (formatter, value);
+          };
+
+    // ------------------------------------------------------------------------
+  } // namespace detail
+
+  // --------------------------------------------------------------------------
+
+  /**
+   * @ingroup micro-os-plus-micro-test-plus-cpp-api-customisation
+   * @brief Public name of the formatter used to report operand values.
+   *
+   * @details
+   * The function comparators and the custom operators report the values
+   * of their operands when a check fails. Values of user-defined types
+   * can be reported only if the application provides an `operator<<`
+   * that writes them to this formatter, declared in the namespace of the
+   * type, so that it is found by argument-dependent lookup:
+   *
+   * @code{.cpp}
+   * namespace app
+   * {
+   *   struct point
+   *   {
+   *     int x;
+   *     int y;
+   *   };
+   *
+   *   constexpr bool
+   *   operator== (const point& lhs, const point& rhs)
+   *   {
+   *     return lhs.x == rhs.x && lhs.y == rhs.y;
+   *   }
+   *
+   *   inline mt::expression_formatter&
+   *   operator<< (mt::expression_formatter& formatter, const point& p)
+   *   {
+   *     return formatter << "{ " << p.x << ", " << p.y << " }";
+   *   }
+   * } // namespace app
+   * @endcode
+   *
+   * Without such an operator, comparators such as `eq()` do not compile
+   * for user-defined types, since the operand values cannot be
+   * formatted; only the scoped enumerations are formatted without it,
+   * by their underlying value. Plain boolean checks, such as
+   * `expect (a == b)`, do not need it, but they report only the source
+   * location on failure. The
+   * same operator also writes the values appended to the messages of
+   * the checks (`expect (a == b) << "a is " << a`).
+   *
+   * Applications use the `operator<<` overloads, and `str()` to test
+   * their own operators; the functions that manage the buffer are
+   * private to the framework.
+   */
+  using expression_formatter = detail::expression_formatter;
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ============================================================================
+// Templates, inlines & constexpr implementations.
+
+#include "inlines/expression-formatter-inlines.h"
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_EXPRESSION_FORMATTER_H_
+
+// ----------------------------------------------------------------------------

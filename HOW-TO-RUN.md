@@ -9,13 +9,18 @@ This folder holds one workspace per board:
 - `pico2-smp-stdcpp/` — Raspberry Pi Pico 2 (RP2350, 2x Cortex-M33), the same
   stdc++ package as `smp-stdcpp-test`, under QEMU (single-core) and on both
   cores; the scaffolded base is `cortexm-pico2/smp-test4`;
+- `weactf411-spi-stdcpp/` — WeAct F411CE (STM32F411CE, Cortex-M4F), the
+  `spi-stdcpp-test`: the stdc++ package plus the board's SPI NOR flash
+  (JEDEC ID, all transports, scratch sector write/restore); hardware only,
+  scaffolded from `cortexm-weactf411/spi-pipeline`;
 - `rpi-zero-2w-aarch64/` — Raspberry Pi Zero 2 W, AArch64, all eight
   CTest cases (including `mtp-args`) of the hand-made
   `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace plus the
   arguments check.
 
 The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`;
-the Pico 2 workspace is the same guide's Cortex-M application (chapter 29.11).
+the Pico 2 and WeAct workspaces are the same guide's Cortex-M applications
+(chapters 29.11 and 29.12).
 
 The rest of this page describes the WeAct workspace in this folder. The harness in general is described in `tests/ARCHITECTURE.md`/`.pdf`.
 

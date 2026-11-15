@@ -1822,6 +1822,70 @@ programs the ELF, enables semihosting on both cores, resumes `cm1` before
 `cm0`, and ends on the semihosting `SYS_EXIT`. The board must be power-cycled
 between runs.
 
+## 29.12 A third target: WeAct F411CE and SPI flash
+
+The WeAct F411CE (STM32F411CE, one Cortex-M4F) is the hardware-only case. Its
+workspace, `weactf411-spi-stdcpp/`, was scaffolded from the board's
+`spi-pipeline` test (`4.7.5`) because that is the test that owns the SPI NOR
+flash support:
+
+```bash
+node bin/scaffold.js /home/dan/Work/weactf411-spi-stdcpp \
+  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
+  --select 4.7.5 \
+  --micro-test-plus /home/dan/Work/old/micro-os-scaffold-workspace-cortexm-weactf411-mtp/third_party/micro-test-plus \
+  --yes --no-build
+```
+
+The new test, `spi-stdcpp-test`, has eight suites: the six stdc++ suites from
+the other targets, `00 - Console and start-up` (the semihosting argc/argv and
+USART1), and `00 - SPI flash`, which drives the board's own `bsp/spi.cpp` and
+`flash.cpp`:
+
+- `spi::probe()` chooses DMA, IRQ or polled; the report prints the choice.
+- JEDEC ID, status register 1 and a non-destructive read.
+- All three transports read the same JEDEC ID.
+- A scratch sector (the last 4 KiB) is read, erased, programmed with a
+  pattern, verified, then erased and written back byte-for-byte.
+
+On the board:
+
+```text
+# args: argc=3 argv[0]="spi-stdcpp-test" argv[1]="--output-file" argv[2]="...tap"
+# console: USART1 115200 baud, BRR=868, CR1=200C, PA9/PA10 AF7
+# SPI: transport dma
+# SPI: JEDEC EF 40 18          (Winbond W25Q128, 16 MiB)
+# SPI: status 00
+# SPI: scratch sector at 0x00FFF000 of 0x01000000
+```
+
+The `# args:` line is the same transport `mtp-args` checks; the console suite
+also verifies the USART1 registers (UE/TE/RE, BRR = 868, PA9/PA10 in AF7) and
+waits for `TC` after writing a line. That proves the software side even when
+the UART pins are not wired. The board's UART is **PA9 (TX) / PA10 (RX),
+115200 8N1**; the runner opens neither it nor the probe's CDC.
+
+Only the last sector is touched, and it is restored, so the SPI flash's
+filesystem partitions and the 1 MiB primary archive are left alone.
+
+| Case | Checks | Cases | Suites | Time |
+| --- | --- | --- | --- | --- |
+| `cortexm-weactf411-spi-stdcpp-test-hwd` | 104 | 44 | 8 | 72.9 s CTest, 785 ms kernel |
+
+This board has **no qemu image** (its `board.cmake` sets no QEMU linker), so
+there is no `-qemu` case: the test is hardware only. The complete report is
+
+```text
+weactf411-spi-stdcpp/tests/build/cortexm-weactf411-cmake-gcc-debug/
+  platform-bin/port-tests/.hw-logs/spi-stdcpp-test.tap
+```
+
+The runner programs the flash over CMSIS-DAP and reads the verdict through
+semihosting (`hw.sh` passes `--output-file`). USART1 is the board's console
+and is not opened by the runner, so a terminal on the virtual COM port is
+unaffected. CTest takes about a minute because it erases, programs and
+verifies the image plus the stdc++ report.
+
 # 30. Porting the library to another board
 
 The library is board-independent; the board facts are in the port and in three constants in the library:
@@ -1872,6 +1936,11 @@ The port was validated in this order; each step found something the previous one
    (both cores), 0 failed. This step found the `boot.S` `argc=0` problem: the
    scaffolded `--output-file` never reached µTest++ until the semihosting
    command line was read before `main()`.
+8. **Cortex-M4F + SPI (WeAct F411CE).** `spi-stdcpp-test`: 104 checks, 44
+   cases, 8 suites, 0 failed, hardware only. The console suite verifies the
+   command line (`argc=3`, `--output-file`) and the USART1 registers; the SPI
+   suite reports the W25Q128 (`EF 40 18`), picks DMA, reads the ID with all
+   three transports, and restores the 4 KiB scratch sector.
 
 # 33. File inventory and commands
 
@@ -1888,6 +1957,12 @@ Repository
 │   ├── third_party/stateos-stdc++       symlink to the library
 │   ├── micro-os-plus-iii-cortexm/
 │   │   └── test/pico2/smp-stdcpp-test/   the test
+│   ├── micro-os-plus-iii-smp/            the kernel
+│   └── tests/                            the harness, run.sh, CTest
+├── weactf411-spi-stdcpp/                 the Cortex-M4F + SPI application
+│   ├── third_party/stateos-stdc++       symlink to the library
+│   ├── micro-os-plus-iii-cortexm/
+│   │   └── test/weactf411/spi-stdcpp-test/
 │   ├── micro-os-plus-iii-smp/            the kernel
 │   └── tests/                            the harness, run.sh, CTest
 └── rpi-zero-2w-aarch64/                  the other AArch64 workspace
@@ -1914,6 +1989,11 @@ cd /home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp/tests
 ./run.sh smp-stdcpp-test --hwd
 cat build/cortexm-pico2-cmake-gcc-debug/platform-bin/port-tests/.qemu-logs/smp-stdcpp-test.tap
 cat build/cortexm-pico2-cmake-gcc-debug/platform-bin/port-tests/.hw-logs/smp-stdcpp-test.tap
+
+# the Cortex-M4F + SPI application (hardware only)
+cd /home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp/tests
+./run.sh spi-stdcpp-test
+cat build/cortexm-weactf411-cmake-gcc-debug/platform-bin/port-tests/.hw-logs/spi-stdcpp-test.tap
 ```
 
 # 34. Summary
@@ -1925,6 +2005,7 @@ cat build/cortexm-pico2-cmake-gcc-debug/platform-bin/port-tests/.hw-logs/smp-std
 - **Both runs pass:** 75/75 checks on QEMU (0.21 s) and on the Raspberry Pi 4 B (65.6 s CTest, 24.6 s image time).
 - **A new project** is one `micro-os-scaffold` command, the library in `third_party/`, the test directory, two CMake hooks and one runner condition (chapter 29).
 - **A second target**, a 2 × Cortex-M33 Pico 2, runs the same suites: 72 checks under QEMU (single-core emulated) and 75 on the board (chapter 29.11).
+- **A third target**, a Cortex-M4F WeAct F411CE, adds the board's SPI NOR flash to the stdc++ suites: 104 checks on hardware, including the semihosting argc/argv, the USART1 configuration, a JEDEC ID read over all three transports and a scratch sector written and restored (chapter 29.12).
 
 ---
 
