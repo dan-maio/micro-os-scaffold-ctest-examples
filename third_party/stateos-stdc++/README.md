@@ -27,10 +27,14 @@ That split is deliberate: `<bits/gthr.h>` is parsed from inside `<mutex>`, and
 the µOS++ headers include `<mutex>` themselves. Keeping the kernel headers out
 of `gthr-default.h` breaks the cycle.
 
-The toolchain provides `<barrier>`, `<latch>` and `<semaphore>` only when atomic
-waiting or POSIX semaphores are available. On this target neither is, so the
-three wrapper headers here are found first and define the classes on top of the
-kernel's mutex, condition variable and counting semaphore.
+GCC 15 does define the C++20 concurrency feature macros on this target: its
+generic atomic-wait layer is itself a mutex and a condition variable, so the
+toolchain's `<barrier>`, `<latch>` and `<semaphore>` would compile. This package
+keeps the StateOS approach anyway: its include directory is found first, and the
+three wrapper headers define the classes directly on the kernel's mutex,
+condition variable and counting semaphore. A wait then blocks in the scheduler,
+and libstdc++'s atomic-wait machinery (waiter pool, hash table) is not pulled
+in.
 
 ## Differences from the StateOS original
 
@@ -60,6 +64,12 @@ target_link_libraries (my-test PRIVATE stateos-stdc++)
 
 The compile definition `_GLIBCXX_HAS_GTHREADS=1` and the include directory are
 INTERFACE properties of the target.
+
+## Full documentation
+
+`rpi4b-smp/STDCXX.md` (`STDCXX.pdf`) is the detailed porting and usage guide:
+the GCC gthread contract, the design of every ported file, the µTest++ test
+walkthrough and the QEMU/hardware CTest cases.
 
 ## License
 

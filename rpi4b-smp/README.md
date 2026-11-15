@@ -337,9 +337,10 @@ here is a relative link to it.
 
 The library's CMake target (`stateos-stdc++`) puts its include directory
 **before** the toolchain's C++ headers. That is what makes
-`<bits/gthr-default.h>` the µOS++ one, and what supplies the C++20
-`<barrier>`, `<latch>` and `<semaphore>` headers the toolchain leaves out when
-atomic waiting and POSIX semaphores are unavailable. See
+`<bits/gthr-default.h>` the µOS++ one, and what supplies kernel-backed C++20
+`<barrier>`, `<latch>` and `<semaphore>` headers instead of the toolchain's
+atomic-wait versions. The full porting and test/CTest guide is
+`STDCXX.md` (`STDCXX.pdf`); the concise notes are in
 `third_party/stateos-stdc++/README.md`.
 
 ### Running

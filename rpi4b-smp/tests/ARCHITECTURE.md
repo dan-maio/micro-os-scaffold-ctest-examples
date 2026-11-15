@@ -764,9 +764,11 @@ bearing:
 - `<bits/gthr.h>` includes `<bits/gthr-default.h>`, and the first one found
   must be the µOS++ gthread layer, or `<mutex>`, `<thread>` and `<future>`
   compile as single-threaded no-ops;
-- the toolchain provides `<barrier>`, `<latch>` and `<semaphore>` only when
-  atomic waiting or POSIX semaphores are available. On this target neither is,
-  so the package's headers must be found first.
+- GCC 15 does enable the C++20 concurrency feature macros here (its generic
+  atomic-wait layer is a mutex and a condition variable), so the toolchain's
+  `<barrier>`, `<latch>` and `<semaphore>` would compile. The package's headers
+  are found first anyway: they implement the classes directly on the kernel's
+  mutex, condition variable and counting semaphore.
 
 Its `_GLIBCXX_HAS_GTHREADS=1` is an INTERFACE define: `c++config.h` leaves it
 undefined on the bare-metal target. The library's sources are INTERFACE

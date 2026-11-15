@@ -11,6 +11,8 @@ This folder holds one workspace per board:
   `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` workspace plus the
   arguments check.
 
+The `smp_test4` port is described in detail in `rpi4b-smp/STDCXX.md`/`.pdf`.
+
 The rest of this page describes the WeAct workspace in this folder. The harness in general is described in `tests/ARCHITECTURE.md`/`.pdf`.
 
 ## The WeAct F411CE workspace

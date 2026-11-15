@@ -87,8 +87,9 @@ The library is `third_party/stateos-stdc++/` (a relative link to the
 repository's `third_party/stateos-stdc++/`). Its include directory is placed
 before the toolchain's C++ headers, so `<bits/gthr-default.h>` is the µOS++
 gthread layer and `<barrier>`, `<latch>`, `<semaphore>` are the versions built
-on the kernel. See `third_party/stateos-stdc++/README.md` for the design and
-the differences from the StateOS original.
+on the kernel. `STDCXX.md` (`STDCXX.pdf`) is the detailed guide: the GCC
+gthread contract, every ported file, the test walkthrough and the CTest
+cases. `third_party/stateos-stdc++/README.md` has the short version.
 
 ```bash
 ./run.sh smp_test4          # under QEMU

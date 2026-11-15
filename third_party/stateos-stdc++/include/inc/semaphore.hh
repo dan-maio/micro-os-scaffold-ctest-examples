@@ -20,10 +20,11 @@
 // ---------------------------------------------------
 // Adapted for µOS++ III (SMP) from the StateOS implementation, 2026.
 //
-// libstdc++ only provides <semaphore> when atomic waiting or POSIX semaphores
-// are available; on bare metal neither is, so this header supplies the
-// standard class on top of the kernel's counting semaphore. The toolchain's
-// own <semaphore> is skipped through the same _GLIBCXX_SEMAPHORE guard.
+// The toolchain's <semaphore> is built on libstdc++'s generic atomic-wait
+// layer (a mutex and a condition variable). This package keeps the StateOS
+// approach: this header is found first and implements the class directly on
+// the kernel's counting semaphore, so a wait blocks in the scheduler. The
+// toolchain's body is skipped through the same _GLIBCXX_SEMAPHORE guard.
 
 #ifndef _GLIBCXX_SEMAPHORE
 #define _GLIBCXX_SEMAPHORE 1
