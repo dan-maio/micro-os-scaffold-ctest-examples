@@ -94,13 +94,18 @@ The workspaces:
   - The same host apps drive it (`host_xfer.py`, `send_file.py`, in its
     folder).
   - Under QEMU: 7/7 passed (the USB tests report SKIP, no device mode).
-  - On the board (2026-11-24): `host_xfer.py` with sizes 0 B to 64 KiB
-    passed PUT, GET, LIST and the CRCs. The board reported 19 commands,
-    no CRC error, 4 cores active, `RESULT: PASS`.
-  - 1 MiB transfers fail with the original `usb_test` too: the device
-    prints each stored file as a hexdump on the 115200-baud UART before
-    it replies, and the host waits only 120 s. The test's `README.md` has
-    the details.
+  - On the board (2026-11-24):
+    - `host_xfer.py`'s full matrix (0 B to 1 MiB) passed PUT, GET, LIST and
+      the CRCs in 7 to 9 s: 19 commands, 4 cores active, `RESULT: PASS`;
+    - a random 1 MiB file matched byte for byte.
+  - The test prints a short UART dump of each stored file, so replies are
+    immediate. `usb_test`'s full dump of a 1 MiB file takes about
+    5 minutes, which outlasts the host's 120 s wait.
+  - The test found a USB driver bug: a receive buffer sharing its last
+    cache line with other data lost the last 48 bytes of each 1 MiB
+    transfer. It is fixed in the source's bcm283x device package
+    (`027acb3`: the driver receives into its own aligned buffer). The
+    test's `README.md` has the details.
 
 The hand-made tests are **local tests**. `scripts/local-tests.txt` lists
 them, and `micro-os-plus-iii/tests/platforms/<p>/tests/tests.local.cmake`

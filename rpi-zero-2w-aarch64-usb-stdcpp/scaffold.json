@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T11:33:16.468Z",
+  "generatedAt": "2026-11-24T12:07:45.706Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
@@ -25,7 +25,7 @@
       "id": "micro-os-plus-iii-devices-bcm283x",
       "dir": "common/micro-os-plus-iii-devices-bcm283x",
       "version": "0.1.0-pre.1",
-      "commit": "eb8795f"
+      "commit": "027acb3"
     },
     {
       "id": "micro-os-plus-iii-devices-storage",
@@ -166,6 +166,22 @@
         "status": "integrated",
         "starter": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/mtp-stdcpp"
       }
+    ]
+  },
+  "localTests": {
+    "file": "scripts/local-tests.txt",
+    "tests": [
+      {
+        "name": "usb-sd-stdcpp",
+        "platform": null,
+        "paths": [
+          "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/usb-sd-stdcpp"
+        ]
+      }
+    ],
+    "keep": [],
+    "hookFiles": [
+      "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/tests.local.cmake"
     ]
   },
   "build": {

@@ -456,22 +456,51 @@ send_reply (std::uint32_t status, const void* payload, std::uint32_t len)
     }
 }
 
-// The stored file, as a framed hexdump on the UART (the bulk dump stays off
-// semihosting: every line there is a debug halt), the frame on both.
+// The stored file, as a SHORT framed hexdump on the UART: the first
+// kDumpHeadLines lines and the last line, with the bytes in between
+// summarised. A full dump of a 1 MiB file is about 3.3 MB of text, some
+// 5 minutes at 115200 baud, and the reply waits for it (usb_test's design),
+// so the host timed out. The frame, with the CRC of the whole file, is on
+// both consoles; the bulk dump stays off semihosting (every line there is a
+// debug halt).
+inline constexpr std::uint32_t kDumpHeadLines = 2u;
+
+void
+send_chunk (const char* name, const std::uint8_t* data, std::uint32_t off,
+            std::uint32_t len)
+{
+  OutMsg m;
+  m.kind = OutMsg::Kind::chunk;
+  m.name = name;
+  m.offset = off;
+  const std::uint32_t n = (len - off < kChunkData) ? (len - off) : kChunkData;
+  m.bytes.assign (reinterpret_cast<const char*> (data + off), n);
+  g_uart_q.send (std::move (m));
+}
+
 void
 stream_file (const char* name, const std::uint8_t* data, std::uint32_t len,
              std::uint32_t crc)
 {
   log_line (format ("---- BEGIN %s (%lu bytes) ----\n", name, (unsigned long)len));
-  for (std::uint32_t off = 0u; off < len; off += kChunkData)
+  const std::uint32_t lines = (len + kChunkData - 1u) / kChunkData;
+  if (lines <= kDumpHeadLines + 1u)
     {
-      OutMsg m;
-      m.kind = OutMsg::Kind::chunk;
-      m.name = name;
-      m.offset = off;
-      const std::uint32_t n = (len - off < kChunkData) ? (len - off) : kChunkData;
-      m.bytes.assign (reinterpret_cast<const char*> (data + off), n);
-      g_uart_q.send (std::move (m));
+      for (std::uint32_t off = 0u; off < len; off += kChunkData)
+        {
+          send_chunk (name, data, off, len);
+        }
+    }
+  else
+    {
+      for (std::uint32_t i = 0u; i < kDumpHeadLines; ++i)
+        {
+          send_chunk (name, data, i * kChunkData, len);
+        }
+      const std::uint32_t last = (lines - 1u) * kChunkData;
+      log_line_uart (format ("usb-rx %s ... %lu bytes not shown ...\n", name,
+                             (unsigned long)(last - kDumpHeadLines * kChunkData)));
+      send_chunk (name, data, last, len);
     }
   log_line (format ("---- END %s crc32=%08lx ----\n", name, (unsigned long)crc));
 }

@@ -63,23 +63,47 @@ verdict. The host side needs `pyusb` and, without root, the udev rule from
 For each stored file, the console prints the time the SD write took
 (`put <name>: N bytes in M ms`) and the CRC computed alongside it.
 
+## The console dump
+
+Each stored file is printed on the UART in a short form:
+
+- the BEGIN line;
+- the first two hexdump lines;
+- a `... N bytes not shown ...` line;
+- the last hexdump line;
+- the END line, with the CRC-32 of the whole file.
+
+`usb_test` prints the full dump before it replies. For 1 MiB that is about
+3.3 MB of text, roughly 5 minutes at 115200 baud, longer than the host's
+120 s wait, so 1 MiB transfers timed out there.
+
 ## Results on the board (2026-11-24)
 
-`host_xfer.py --sizes 0,1,511,512,513,1024,4096,65536`:
+- `host_xfer.py` with its default sizes, 0 B to 1 MiB:
+  - every size passed PUT, GET and the CRC check, plus LIST, in 7 to 9 s;
+  - the board's tally: 19 commands, 1 116 673 bytes in and out;
+  - all 4 cores active, `RESULT: PASS`.
+- `send_file.py` with a random 1 MiB file: a byte-for-byte match, and the
+  board's CRC equal to the host's.
+- 1 MiB round trips repeated 5 times, plus 1 000 000, 1 048 575, 786 432,
+  65 536, 513 and 1 byte(s): all identical.
 
-- every size passed PUT, GET and the CRC check, plus LIST;
-- the board's tally: 19 commands, 72 193 bytes in and out, no CRC error;
-- all 4 cores active;
-- `RESULT: PASS`, in 42 s;
-- the SD writes took 21 to 69 ms each, with the files under `/sd/tests/`.
+**The bug this test found**, in the bcm283x device package's
+`usb_dwc2::ep_read ()`:
 
-**The 1 MiB size** (in `host_xfer.py`'s default list) fails here, and it
-fails the same way with the original `usb_test`. The device prints every
-stored file to the UART as a hexdump before it replies. For 1 MiB that is
-about 3.3 MB of text, roughly 5 minutes at 115200 baud, and the host waits
-only 120 s for the reply. Use `--sizes` up to 64 KiB (or 128 KiB). For one
-large file, `send_file.py` alone also waits 120 s.
+- The driver pointed the USB DMA straight at the caller's buffer.
+- This test's 1 MiB buffer ended 48 bytes into a cache line shared with
+  the per-core counters, which the load threads update constantly.
+- That line stayed live in the cache with the buffer's old bytes, so the
+  last 48 bytes of every 1 MiB transfer arrived as zeros. The board's CRC,
+  computed right after the receive, already differed from the host's.
 
-`host_xfer.py` ends the run itself, so don't run `send_file.py
---terminate` after it. Run `send_file.py` on its own, or before
-`host_xfer.py`.
+The fix (micro-os-plus-iii-devices-bcm283x `027acb3`, AArch64 and AArch32):
+
+- each chunk is received into a 64-byte-aligned driver buffer, then copied
+  to the caller's;
+- any caller buffer is now safe, including `usb_test`'s, which has the same
+  layout.
+
+`host_xfer.py` ends the run itself (a terminating PING), so run
+`send_file.py --terminate` on its own, not after it.
