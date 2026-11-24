@@ -60,9 +60,10 @@ The workspaces:
   - µTest++ (`mtp-args`, `mtp-example`, `mtp-smp`) on the board
     (2026-11-24): 10/10, 27/27, and 75/75 with a 2.88x speed-up on
     3 cores. `smp_test0` passes alongside.
-  - The fix that makes µTest++ work here is in this workspace's
+  - The fix that makes µTest++ work here is in
     `micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/openocd.cfg`.
-    `scripts/local-tests.txt` keeps the file across re-scaffolds.
+    It is now in the source repository too (commit `06d365fe` on
+    `align/smp-upstream`), so a re-scaffold brings it.
     - With many semihosting calls (µTest++'s console lines and report
       file), OpenOCD's background polling sometimes stopped noticing that
       core 0 had halted at a semihosting trap. The core waited, OpenOCD

@@ -116,7 +116,7 @@ TAP report is `micro-os-plus-iii/tests/build/<configuration>/mtp-reports/<ctest 
 
 | Repository | Folder | Version | Commit |
 | --- | --- | --- | --- |
-| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `b9887856` |
+| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `06d365fe` |
 | micro-os-plus-iii-aarch32 | `aarch32/micro-os-plus-iii-aarch32` | 0.1.0-pre.1 | `2eb3719` |
 | micro-os-plus-iii-devices-rk3506 | `aarch32/micro-os-plus-iii-devices-rk3506` | 0.1.0-pre.1 | `d84cd46` |
 | micro-os-plus-iii-devices-storage | `common/micro-os-plus-iii-devices-storage` | 0.1.0-pre.1 | `7c6cd98` |
