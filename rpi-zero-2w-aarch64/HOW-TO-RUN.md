@@ -66,6 +66,18 @@ mtp-example: 27 checks passed, 3 test suites
 mtp-smp:     78 checks passed, 10 test suites (speed-up 3.62x on 4 cores)
 ```
 
+## Verified on the board
+
+On the board (2026-11-24, `PROBE=cmsis-dap ./run.sh --hwd-only`), the four
+hardware cases pass:
+
+```text
+aarch64-rpi-zero-2w-mtp-args-hwd        Passed   10/10
+aarch64-rpi-zero-2w-mtp-example-hwd     Passed   27/27
+aarch64-rpi-zero-2w-mtp-smp-hwd         Passed   78/78, speed-up 3.84x on 4 cores
+aarch64-rpi-zero-2w-smp-mat-test-hwd    Passed
+```
+
 `mtp-example` suites (all auto-registered):
 
 ```text

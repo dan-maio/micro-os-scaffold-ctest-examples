@@ -171,13 +171,19 @@ Re-scaffolded workspaces, on the boards (2026-11-24):
     now opts it in with
     `set_property (GLOBAL APPEND PROPERTY UOS_MTP_APPS spi-stdcpp-test)`.
 
-From the previous layout's workspaces, on the same boards and with the same
-test sources (not yet repeated after the re-scaffold):
+- **Zero 2 W AArch32** (`rpi-zero-2w-aarch32`, `PROBE=cmsis-dap ./run.sh
+  --hwd-only`, JTAG at 10000 kHz): 5/5 passed.
+  - `smp-mat-test` passed, `mtp-args` 10/10, `mtp-example` 27/27.
+  - `mtp-smp` 78/78, speed-up 3.92x on 4 cores (672 ms on one core, 171 ms
+    on four); `mtp-stdcpp` 75/75.
+- **Zero 2 W AArch64** (`rpi-zero-2w-aarch64`, same command): 4/4 passed.
+  - `smp-mat-test` passed, `mtp-args` 10/10, `mtp-example` 27/27.
+  - `mtp-smp` 78/78, speed-up 3.84x on 4 cores (561 ms on one core, 146 ms
+    on four).
 
-- **Zero 2 W AArch32:** `mtp-stdcpp` 75/75; `mtp-smp` 78/78, with a 3.93x
-  speed-up.
-- **Pi 4 B:** `mtp-stdcpp` / `smp_test4` 75/75.
-- **Pico 2:** `smp-stdcpp-test` 75/75 on both cores.
+Every workspace has now passed on its board since the move to the new
+layout. The two `*-usb-stdcpp` workspaces and `luckfox-lyra` have their own
+results in their entries above.
 
 WeAct console wiring: USART1 at 115200 on the WCH-Link's serial port, WeAct
 A9 (TX) to the WCH-Link's **RX** and A10 to its TX. With TX and RX swapped
