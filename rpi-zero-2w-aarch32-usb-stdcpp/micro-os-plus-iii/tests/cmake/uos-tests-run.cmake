@@ -23,9 +23,12 @@ include_guard (GLOBAL)
 # ---- SCAFFOLD µTest++ (micro-os-scaffold --micro-test-plus) ----------------------------------
 # A mtp-* test gets its name as argv[0] and asks for its complete TAP
 # report in a file, through semihosting (or, hosted, as plain arguments):
-# <build>/mtp-reports/<ctest name>.tap. Other tests are unchanged.
+# <build>/mtp-reports/<ctest name>.tap. Other tests are unchanged. A
+# µTest++ test with another name opts in from its tests.cmake or
+# tests.local.cmake: set_property (GLOBAL APPEND PROPERTY UOS_MTP_APPS <name>).
 function (uos_mtp_report _app _name _out)
-  if (_app MATCHES "^mtp-")
+  get_property (_mtp_apps GLOBAL PROPERTY UOS_MTP_APPS)
+  if (_app MATCHES "^mtp-" OR _app IN_LIST _mtp_apps)
     file (MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mtp-reports")
     set (${_out} "${CMAKE_BINARY_DIR}/mtp-reports/${_name}.tap" PARENT_SCOPE)
   else ()

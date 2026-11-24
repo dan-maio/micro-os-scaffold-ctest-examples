@@ -9,3 +9,7 @@ function (board_test_libs_local _app _out)
     set (${_out} stateos-stdc++ uos-micro-test-plus PARENT_SCOPE)
   endif ()
 endfunction ()
+
+# spi-stdcpp-test is a µTest++ test without the mtp- prefix: give it the
+# runner's command line (argv[0], --output-file <report>) like a mtp-* test.
+set_property (GLOBAL APPEND PROPERTY UOS_MTP_APPS spi-stdcpp-test)

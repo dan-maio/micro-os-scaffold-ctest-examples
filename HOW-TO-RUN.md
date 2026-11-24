@@ -162,13 +162,18 @@ Re-scaffolded workspaces, on the boards (2026-11-24):
     tests with `-Wl,--wrap=main`. A `main ()` entered without arguments
     reads them from the debugger, so `os_main ()` gets them.
 
+- **WeAct F411CE** (WCH-Link):
+  - this folder: 3/3 passed (`mos-test1`, `mtp-args` 7/7, `mtp-example` 24/24);
+  - `weactf411-spi-stdcpp`: 5/5 passed (`spi-pipeline`, `mtp-args` 7/7,
+    `mtp-example` 24/24, `mtp-stdcpp` 72/72, `spi-stdcpp-test` 104/104).
+  - `spi-stdcpp-test` is a µTest++ test not named `mtp-*`, so it first got
+    no command line and failed its 4 argv checks. Its `tests.local.cmake`
+    now opts it in with
+    `set_property (GLOBAL APPEND PROPERTY UOS_MTP_APPS spi-stdcpp-test)`.
+
 From the previous layout's workspaces, on the same boards and with the same
 test sources (not yet repeated after the re-scaffold):
 
-- **WeAct F411CE** (2026-11-15, WCH-Link):
-  - `mtp-args` 7/7, `mtp-example` 24/24, `spi-pipeline` passed,
-    `spi-stdcpp-test` 104/104;
-  - in this folder: `mos-test1`, `mtp-args`, `mtp-example` passed.
 - **Zero 2 W AArch32:** `mtp-stdcpp` 75/75; `mtp-smp` 78/78, with a 3.93x
   speed-up.
 - **Pi 4 B:** `mtp-stdcpp` / `smp_test4` 75/75.
