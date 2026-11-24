@@ -1,5 +1,9 @@
 # The µTest++ test workspaces
 
+This repository is on GitHub, `dan-maio/micro-os-scaffold-ctest-examples`,
+with a local bare backup; `WORKING-WITH-REMOTE.md` describes cloning,
+pulling and pushing.
+
 This folder holds nine workspaces, all scaffolded from the restructured
 source (`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, branch
 `align/smp-upstream`: kernel and harness in `micro-os-plus-iii/`, ports by
