@@ -1,0 +1,839 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ source file with implementations for the µTest++ test
+ * hierarchy member functions.
+ *
+ * @details
+ * This source file contains the non-template implementations for the test
+ * hierarchy of the µTest++ framework: the constructors and destructors, the
+ * `run()` member functions of the test cases and suites, which call the
+ * reporter before and after invoking the stored callable, and the
+ * registration of the child test cases, including the accumulation of their
+ * totals.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus`
+ * namespace.
+ *
+ * This file must be included when building the µTest++ library.
+ */
+
+// ----------------------------------------------------------------------------
+
+#include "micro-os-plus/micro-test-plus/test.h"
+#include "micro-os-plus/micro-test-plus/runner.h"
+
+#if __has_include("micro-os-plus/diag/trace.h")
+#include "micro-os-plus/diag/trace.h"
+#endif // __has_include("micro-os-plus/diag/trace.h")
+
+#include <cstdio>
+#include <cstring>
+#include <exception>
+#include <string>
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#pragma clang diagnostic ignored "-Wc++20-compat"
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#else // GCC only
+#pragma GCC diagnostic ignored "-Wredundant-tags"
+#pragma GCC diagnostic ignored "-Wsuggest-final-types"
+#pragma GCC diagnostic ignored "-Wsuggest-final-methods"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED)
+
+// ----------------------------------------------------------------------------
+
+namespace micro_os_plus::micro_test_plus
+{
+  namespace detail
+  {
+    /**
+     * @details
+     * The text is scanned first, so that a name without control characters
+     * is not touched. The tab is kept; all the other control characters,
+     * including the line feed and the NUL, and DEL, are replaced.
+     */
+    void
+    escape_control_characters (std::string& name)
+    {
+      const auto is_control = [] (char c)
+        {
+          const auto unit = static_cast<unsigned char> (c);
+          return (unit < 0x20 && c != '\t') || unit == 0x7F;
+        };
+
+      std::size_t first = 0;
+      while (first < name.size () && !is_control (name[first]))
+        {
+          ++first;
+        }
+      if (first == name.size ())
+        {
+          return;
+        }
+
+      std::string escaped (name, 0, first);
+      escaped.reserve (name.size () + 8);
+      for (std::size_t i = first; i < name.size (); ++i)
+        {
+          if (is_control (name[i]))
+            {
+              append_control_escape (escaped, name[i]);
+            }
+          else
+            {
+              escaped.push_back (name[i]);
+            }
+        }
+      name = std::move (escaped);
+    }
+
+    // ========================================================================
+
+    /**
+     * @details
+     * The constructor initialises a new instance of the `runnable_base` class
+     * with the specified name, runner reference, and own index; the name
+     * pointer is stored, and is expected to point to a string with a
+     * lifetime exceeding that of this instance. The totals, the child
+     * test point index, and the child test cases count start at zero.
+     * If tracing is enabled, the function signature is output for
+     * diagnostic purposes.
+     */
+    runnable_base::runnable_base (const char* name, runner& test_runner,
+                                  size_t own_index)
+        : name_{ name }, runner_{ test_runner }, own_index_{ own_index }
+    {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+      trace::printf ("%s '%s' %" MICRO_OS_PLUS_MICRO_TEST_PLUS_PRI_SIZE "\n",
+                     __PRETTY_FUNCTION__, name, own_index_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+    }
+
+    /**
+     * @details
+     * Nothing is owned; the child test cases were destroyed when the
+     * `test()` calls that created them returned. If tracing is enabled,
+     * the name is output for diagnostic purposes.
+     */
+    runnable_base::~runnable_base ()
+    {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+      trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+    }
+
+    /**
+     * @details
+     * Returns the reporter owned by the runner, through its `reporter_`
+     * pointer, which is valid after `runner::initialise()`.
+     */
+    [[nodiscard]] reporter&
+    runnable_base::test_reporter (void) const noexcept
+    {
+      return *runner_.reporter_;
+    }
+
+    /**
+     * @details
+     * Returns the pointer kept by the owning runner, set by
+     * `after_test_case_create()` while a test case runs.
+     */
+    [[nodiscard]] test_case*
+    runnable_base::running_test_case (void) const noexcept
+    {
+      return runner_.running_test_case_;
+    }
+
+    /**
+     * @details
+     * Returns the flag kept by the owning runner, set by
+     * `runner::abort()` and never cleared.
+     */
+    [[nodiscard]] bool
+    runnable_base::is_aborted (void) const noexcept
+    {
+      return runner_.aborted_;
+    }
+
+    /**
+     * @details
+     * Returns `runner_options::list_tests` of the session options kept
+     * by the owning runner.
+     */
+    [[nodiscard]] bool
+    runnable_base::is_listing (void) const noexcept
+    {
+      return runner_.options_.list_tests;
+    }
+
+    /**
+     * @details
+     * Reads the pointer of the runner, a friend, and the parent suite
+     * of the test case, which `runnable_base` may access.
+     */
+    bool
+    runnable_base::has_running_test_case_of (
+        const suite& target) const noexcept
+    {
+      const test_case* running = runner_.running_test_case_;
+      return running != nullptr && &running->parent_suite_ == &target;
+    }
+
+    /**
+     * @details
+     * Sets the pointer of the runner, a friend, and returns the previous
+     * value, so that the caller can restore it when the body returns.
+     */
+    suite*
+    runnable_base::exchange_running_suite (suite* running) noexcept
+    {
+      suite* previous = runner_.running_suite_;
+      runner_.running_suite_ = running;
+      return previous;
+    }
+
+    /**
+     * @details
+     * The suite whose body runs accepts the test case. When the session
+     * was declined, or aborted, the test case is ignored, as
+     * `after_test_case_create()` ignores it.
+     *
+     * Otherwise the call is rejected. If a test case runs (and the test
+     * cases are not only listed), the failure is reported as a check of
+     * that test case, so that it stays in its report. Otherwise, if a
+     * suite runs, the failure is reported as a check of that suite, with
+     * the same numbering and counting as the unexpected exceptions of the
+     * suite body. Otherwise (the runner was not initialised, has not
+     * started the suites, or has finished them, or the test cases are
+     * listed) the failure is given to `runner::reject_call()`, which
+     * writes the message on `stderr` and, where the reporter can still
+     * write it, as a comment line, for example in the list, and
+     * `runner::mark_rejected()` makes the exit code non-zero, as for the
+     * suites added too late.
+     */
+    bool
+    runnable_base::accepts_test_case (const suite& target,
+                                      const located_name& name)
+    {
+      if (runner_.running_suite_ == &target)
+        {
+          return true;
+        }
+
+      if (runner_.aborted_ || runner_.has_option_errors ()
+          || runner_.options_.help)
+        {
+          return false;
+        }
+
+      std::string message{ "test case '" };
+      message.append (name.name ());
+      message.append ("' started on suite '");
+      message.append (target.name ());
+      message.append ("', which is not running");
+
+      if (runner_.running_test_case_ != nullptr
+          && !runner_.options_.list_tests)
+        {
+          runner_.running_test_case_->report_rejected_test (message,
+                                                            name.location ());
+          return false;
+        }
+
+      suite* running = runner_.running_suite_;
+      if (running != nullptr && !runner_.options_.list_tests)
+        {
+          running->next_test_point_number ();
+          running->test_reporter ().fail_suite (message, *running);
+          running->totals_.increment_failed_checks ();
+          return false;
+        }
+
+      runner_.reject_call (message, &name.location ());
+      return false;
+    }
+
+    /**
+     * @details
+     * Builds the message here, and not in `suite::run()`, to keep the
+     * frame of that function, which is on the stack of every session,
+     * unchanged. Delegates to the private `runner::reject_call()`, which
+     * writes the message on `stderr` and in the listing, and marks the
+     * runner, so that the exit code of `runner::run_suites()` is not 0.
+     */
+    void
+    runnable_base::reject_body_exception (void)
+    {
+      std::string message{ "unexpected exception in the body of suite '" };
+      message.append (name_);
+      message.append ("'");
+
+      runner_.reject_call (message);
+    }
+
+    /**
+     * @details
+     * Delegates to the private `runner::abort()`, as caused by a failed
+     * requirement, passing the supplied source location, so that the
+     * report identifies it. The runner then calls the abort handler, if
+     * any, and terminates the process via `::abort()`.
+     */
+    [[noreturn]] void
+    runnable_base::abort (const reflection::source_location& sl) const
+    {
+      runner_.abort (sl, true);
+    }
+
+    /**
+     * @details
+     * Counts @p test_case, which is a local object of the calling
+     * `create_test_case()`, and immediately invokes `test_case::run()` on
+     * it. The test case is not kept; only `child_test_cases_count_` is
+     * needed later, for the TAP plan.
+     *
+     * If the filter patterns do not select the test case (its own name at
+     * its nesting level, or the name of @p suite at level 0, which
+     * matters only for the top suite, since the other suites run only
+     * when selected), its body is not called: the reporter is notified
+     * with `skip_test_case()` and the parent's skipped test cases counter is
+     * incremented. The test case keeps its index and its place among the
+     * children, so the TAP plan of the parent remains complete.
+     *
+     * Otherwise, while the test case runs, the runner keeps it as its
+     * innermost running test case (see `suite::test()`).
+     * The parent's executed test cases counter is incremented
+     * after the run, and, if the child failed (a failed check, or a failed
+     * nested test case), its failed test cases counter too, so that the
+     * parent fails as well, as in node-tap. The child's check counters are
+     * intentionally not merged into the parent totals; each test case
+     * reports only its own counters.
+     * The child's totals are, however, accumulated into @p suite so that
+     * the suite summary reflects all checks performed by its test cases.
+     *
+     * While the test cases are listed (see `runner_options::list_tests`),
+     * the selected test case is listed by the runner, and neither run nor
+     * counted, except in `child_test_cases_count_`.
+     *
+     * After the test execution was aborted (possible only when the abort
+     * handler threw an exception, which the application caught), the
+     * report is complete, so the test case is neither run nor reported.
+     * The same applies when the runner refused to run the tests because of
+     * errors in the options, or because the output file could not be
+     * opened (see `runner::has_option_errors()`), or because the options
+     * requested the usage (`--help`).
+     */
+    void
+    runnable_base::after_test_case_create (class test_case& test_case,
+                                           suite& suite)
+    {
+      if (runner_.aborted_ || runner_.has_option_errors ()
+          || runner_.options_.help)
+        {
+          return;
+        }
+
+      ++child_test_cases_count_;
+
+      // While the test cases are listed, the selected ones are listed and
+      // the others ignored; none is run.
+      if (runner_.options_.list_tests)
+        {
+          if (runner_.is_selected (suite.name (), 0)
+              && runner_.is_selected (test_case.name (),
+                                      test_case.nesting_depth ()))
+            {
+              runner_.list_test_case (suite, test_case);
+            }
+          return;
+        }
+
+      // Skip the test cases not selected by the filter; the outer test
+      // cases, if any, were selected, otherwise this one was not created.
+      if (!runner_.is_selected (suite.name (), 0)
+          || !runner_.is_selected (test_case.name (),
+                                   test_case.nesting_depth ()))
+        {
+          test_reporter ().skip_test_case (test_case);
+          totals_.increment_skipped_test_cases ();
+          return;
+        }
+
+      // Run the child test case immediately, as the innermost running test
+      // case of the runner. The outer one is restored by the guard, also
+      // when an exception leaves run() (for example thrown by an abort
+      // handler), so that the runner never keeps a destroyed test case.
+      {
+        struct running_guard
+        {
+          class test_case*& running;
+          class test_case* outer;
+
+          ~running_guard ()
+          {
+            running = outer;
+          }
+        } guard{ runner_.running_test_case_, runner_.running_test_case_ };
+
+        runner_.running_test_case_ = &test_case;
+        // A non-virtual call, so that run() is inlined here; each nested
+        // test case adds this call chain to the stack.
+        test_case.test_case::run ();
+      }
+
+      // This test executed one more test case.
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+      trace::printf ("%s test case '%s' executed one more test case\n",
+                     __PRETTY_FUNCTION__, name ());
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+      totals_.increment_executed_test_cases ();
+
+      // Do not accumulate the totals from the child test into the current test
+      // totals, each test case shows only its counters. But a failed child
+      // fails this test too, as in node-tap; the failure reaches all outer
+      // tests, one level at a time, when they end.
+      if (!test_case.totals ().passed ())
+        {
+          totals_.increment_failed_test_cases ();
+        }
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+      trace::printf ("%s suite '%s' totals\n", __PRETTY_FUNCTION__,
+                     suite.name ());
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+
+      // Accumulate the totals from the child test into the suite totals.
+      suite.totals_ += test_case.totals ();
+    }
+  } // namespace detail
+
+  // ==========================================================================
+
+  /**
+   * @details
+   * The check is attributed to the running test case, as a failure whose
+   * message names the two test cases, so that the checks stay in the
+   * subtest of the test case that runs, and its plan stays valid.
+   * The failing condition is a constant, so that the check is always
+   * reported as failed, even if the condition of the caller held.
+   */
+  detail::check_result&&
+  test_case::report_misdirected (detail::check_kind kind,
+                                 const reflection::source_location& sl,
+                                 detail::check_result&& result)
+  {
+    test_case& running = *running_test_case ();
+
+    std::string message{ "[check on test case '" };
+    message.append (name ());
+    message.append ("' while '");
+    message.append (running.name ());
+    message.append ("' runs] ");
+
+    result.init (false, kind, sl, running,
+                 running.test_reporter ().expression_,
+                 running.test_reporter ().writes_passed_checks ());
+
+    return std::move (std::move (result) << message);
+  }
+
+  /**
+   * @details
+   * Reports a failed check in the running test case, with a message that
+   * names the rejected test case, this one, and the running one, so that
+   * the numbering of the test points, the counting, and the plan of the
+   * running test case stay valid, at the location of the rejected
+   * `test()` call.
+   */
+  void
+  test_case::report_misdirected_test (const located_name& name)
+  {
+    test_case& running = *running_test_case ();
+
+    std::string message{ "[test case '" };
+    message.append (name.name ());
+    message.append ("' started on test case '");
+    message.append (this->name ());
+    message.append ("' while '");
+    message.append (running.name ());
+    message.append ("' runs]");
+
+    running.report_rejected_test (message, name.location ());
+  }
+
+  /**
+   * @details
+   * The check is built as the ones of `report_misdirected()`, always
+   * failed, and is reported when it goes out of scope.
+   */
+  void
+  test_case::report_rejected_test (const std::string& message,
+                                   const reflection::source_location& location)
+  {
+    detail::check_result result;
+    result.init (false, detail::check_kind::expectation, location, *this,
+                 test_reporter ().expression_,
+                 test_reporter ().writes_passed_checks ());
+    std::move (result) << message;
+  }
+
+  // ==========================================================================
+
+  /**
+   * @details
+   * No resources are owned by `test_case`; it only refers to its body,
+   * which is destroyed after it, when the `test()` call that created
+   * both returns. If tracing is enabled, the name is output for
+   * diagnostic purposes.
+   */
+  test_case::~test_case ()
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+  }
+
+#if defined(__cpp_exceptions)
+  /**
+   * @details
+   * The failure is reported as a check: the test point number is
+   * incremented first, as `check_result` does, so that the TAP output
+   * numbers it after the checks already reported, and the failed checks
+   * counter is incremented, so that the test case, and through it its
+   * parents, fail.
+   *
+   * The message is `unexpected exception: ` followed by @p what, or
+   * `unexpected exception of unknown type` when @p what is `nullptr`;
+   * the type of a `std::exception` is not shown, since its name is
+   * available only via RTTI, and only in an implementation-defined
+   * (usually mangled) form. There is no expression to display.
+   */
+  void
+  test_case::fail_unexpected_exception (const char* what)
+  {
+    next_test_point_number ();
+
+    detail::failure_info failure{ .kind = detail::check_kind::expectation,
+                                  .message = "unexpected exception",
+                                  .has_expression = false,
+                                  .location = located_name_.location () };
+    if (what != nullptr)
+      {
+        failure.message.append (": ");
+        failure.message.append (what);
+      }
+    else
+      {
+        failure.message.append (" of unknown type");
+      }
+
+    const std::string expression{};
+    test_reporter ().fail (failure, expression, *this);
+    totals_.increment_failed_checks ();
+  }
+#endif // defined(__cpp_exceptions)
+
+  // ==========================================================================
+
+  /**
+   * @details
+   * Removes the suite from the list of suites, so that the runners no
+   * longer reach it; the members are destroyed afterwards. If tracing is
+   * enabled, the suite name is output for diagnostic purposes.
+   */
+  suite::~suite ()
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+
+    unlink ();
+  }
+
+  /**
+   * @details
+   * Invokes the stored callable with this suite, surrounded by
+   * reporter calls to begin and end the suite. While the body runs, this
+   * suite is marked, in the runner, as the one that accepts new test
+   * cases (see `accepts_test_case()`); the previous one is restored when
+   * the body returns, also when it throws.
+   *
+   * While the test cases are listed (see `runner_options::list_tests`),
+   * the body is called only to create its test cases, which are listed;
+   * the suite is neither reported nor timed, and an exception that
+   * escapes the body is reported by `reject_body_exception()`, on
+   * `stderr` and in the listing, the exit code is not 0, and the
+   * listing continues with the next suite.
+   *
+   * When exceptions are enabled, an exception that escapes the callable,
+   * which can be thrown only outside the test cases, since they catch
+   * their own exceptions, is caught and reported as a failed check of
+   * this suite, and the suite ends normally, so that the run continues
+   * with the next suite; the test cases run before the exception remain
+   * reported, and the following ones are not run. A body declared
+   * `noexcept` cannot pass the exception on; the program is then
+   * terminated before it reaches this function.
+   *
+   * As for the test cases, an exception thrown by the abort handler is
+   * passed on, without reporting it, and without ending the suite.
+   */
+  void
+  suite::run (void)
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_ENABLED
+
+    // Marks this suite as the one that accepts new test cases, until the
+    // body returns.
+    struct running_guard
+    {
+      suite& self;
+      suite* outer;
+
+      ~running_guard ()
+      {
+        self.exchange_running_suite (outer);
+      }
+    } guard{ *this, exchange_running_suite (this) };
+
+    // While the test cases are listed, the body only creates them, so
+    // that they are listed; the suite is not reported. An exception
+    // thrown by the body is reported on stderr and in the listing, and
+    // the listing continues with the next suite.
+    if (is_listing ())
+      {
+#if defined(__cpp_exceptions)
+        try
+          {
+            callable_ (*this);
+          }
+        catch (...)
+          {
+            if (is_aborted ())
+              {
+                throw;
+              }
+            reject_body_exception ();
+          }
+#else
+        callable_ (*this);
+#endif // defined(__cpp_exceptions)
+        return;
+      }
+
+    detail::reporter& reporter = this->test_reporter ();
+
+    this->stopwatch_.start ();
+    reporter.begin_suite (*this);
+
+#if defined(__cpp_exceptions)
+    try
+      {
+        // Invoke the callable, passing the self reference.
+        callable_ (*this);
+      }
+    catch (const std::exception& e)
+      {
+        if (is_aborted ())
+          {
+            // Thrown by the abort handler; the report is complete.
+            throw;
+          }
+        fail_unexpected_exception (e.what ());
+      }
+    catch (...)
+      {
+        if (is_aborted ())
+          {
+            // Thrown by the abort handler; the report is complete.
+            throw;
+          }
+        fail_unexpected_exception (nullptr);
+      }
+#else
+    // Invoke the callable, passing the self reference.
+    callable_ (*this);
+#endif // defined(__cpp_exceptions)
+
+    this->stopwatch_.stop ();
+    reporter.end_suite (*this);
+  }
+
+#if defined(__cpp_exceptions)
+  /**
+   * @details
+   * The failure is reported as a check of the suite: the test point
+   * number is incremented first, so that the TAP output numbers it after
+   * the test cases already run, and counts it in the plan of the suite,
+   * and the failed checks counter is incremented, so that the suite, and
+   * through it the session, fail.
+   *
+   * The message is `unexpected exception in the suite body: ` followed
+   * by @p what, or `unexpected exception of unknown type in the suite
+   * body` when @p what is `nullptr`; as for the test cases, the type of
+   * a `std::exception` is not shown.
+   */
+  void
+  suite::fail_unexpected_exception (const char* what)
+  {
+    next_test_point_number ();
+
+    std::string message{ "unexpected exception" };
+    if (what != nullptr)
+      {
+        message.append (" in the suite body: ");
+        message.append (what);
+      }
+    else
+      {
+        message.append (" of unknown type in the suite body");
+      }
+
+    test_reporter ().fail_suite (message, *this);
+    totals_.increment_failed_checks ();
+  }
+#endif // defined(__cpp_exceptions)
+
+  /**
+   * @details
+   * Constant-initialised, so it is null before any static constructor
+   * runs; the static suites constructed before the runner are therefore
+   * not lost.
+   */
+  constinit suite* suite::first_ = nullptr;
+
+  /**
+   * @details
+   * Inserts the suite after the suites with names less than or equal to
+   * its own, so the list remains sorted by name, and the suites with the
+   * same name remain in the order of their insertion. No memory is
+   * allocated. This is the only place where the names of the suites are
+   * compared; the runners run the suites in the order of the list.
+   */
+  void
+  suite::link (void) noexcept
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_ENABLED
+
+    // std::strcmp() compares as unsigned char, like std::string_view,
+    // without a temporary object (which triggers -Waggregate-return).
+    suite** slot = &first_;
+    while (*slot != nullptr && std::strcmp ((*slot)->name_, name_) <= 0)
+      {
+        slot = &(*slot)->next_;
+      }
+    next_ = *slot;
+    *slot = this;
+  }
+
+  /**
+   * @details
+   * Searches the list for the suite and, if found, bypasses it.
+   */
+  void
+  suite::unlink (void) noexcept
+  {
+    for (suite** slot = &first_; *slot != nullptr; slot = &(*slot)->next_)
+      {
+        if (*slot == this)
+          {
+            *slot = next_;
+            next_ = nullptr;
+            return;
+          }
+      }
+  }
+
+  // ==========================================================================
+
+  /**
+   * @details
+   * Initialises the base `suite` with @p name, converted to a
+   * `located_name`, the given @p test_runner, and a no-op callable. Sets
+   * `own_index_` to 1, since the top suite is always the first suite of
+   * the session; the runner numbers the other suites from 2. If tracing
+   * is enabled, the name is output for diagnostic purposes.
+   */
+  top_suite::top_suite (const char* name, runner& test_runner)
+      : suite{ located_name{ name }, test_runner, [] (suite&) noexcept {} }
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+
+    own_index_ = 1;
+  }
+
+  /**
+   * @details
+   * No resources are owned directly by `top_suite`; the destructor
+   * performs no explicit clean-up. If tracing is enabled, the suite
+   * name is output for diagnostic purposes.
+   */
+  top_suite::~top_suite ()
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+  }
+
+  // ==========================================================================
+
+  /**
+   * @details
+   * Delegates to the runner, which knows whether its session has
+   * started.
+   */
+  void
+  static_suite::link_or_reject (void) noexcept
+  {
+    runner::link_static_suite (test_runner (), *this);
+  }
+
+  /**
+   * @details
+   * The suite is removed from the list of suites by the `suite`
+   * destructor. If tracing is enabled, the suite name is output for
+   * diagnostic purposes.
+   */
+  static_suite::~static_suite ()
+  {
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+    trace::printf ("%s '%s'\n", __PRETTY_FUNCTION__, name_);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+  }
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED)
+
+// ----------------------------------------------------------------------------

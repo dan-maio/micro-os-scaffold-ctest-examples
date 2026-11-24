@@ -235,6 +235,57 @@ set_source_files_properties (
   PROPERTIES COMPILE_OPTIONS "-O0"
 )
 
+function (board_test_libs _app _out)
+  # local tests (micro-os-scaffold local tests): tests.local.cmake may answer first.
+  if (COMMAND board_test_libs_local)
+    set (_local_out "")
+    board_test_libs_local ("${_app}" _local_out)
+    if (NOT "${_local_out}" STREQUAL "")
+      set (${_out} ${_local_out} PARENT_SCOPE)
+      return ()
+    endif ()
+  endif ()
+  # µTest++ (micro-os-scaffold --micro-test-plus): every mtp-* test.
+  if ("${_app}" MATCHES "^mtp-")
+    set (${_out} uos-micro-test-plus PARENT_SCOPE)
+    return ()
+  endif ()
+  set (${_out} "" PARENT_SCOPE)
+endfunction ()
+
+# ---- µTest++ (micro-os-scaffold --micro-test-plus) -------------------------------------
+# Every test folder named mtp-* gets µTest++ (the framework in the
+# workspace's third_party/micro-test-plus) and the board support in
+# tests/mtp/, through the uos-micro-test-plus INTERFACE library linked by the
+# hook above. The command line (argv[0] and --output-file) comes from
+# cmake/uos-tests-run.cmake.
+set (_mtp_framework "${CMAKE_CURRENT_LIST_DIR}/../../../../../third_party/micro-test-plus")
+set (_mtp_support "${CMAKE_SOURCE_DIR}/mtp")
+if (NOT TARGET uos-micro-test-plus)
+  file (GLOB _mtp_framework_sources CONFIGURE_DEPENDS "${_mtp_framework}/src/*.cpp")
+  add_library (uos-micro-test-plus INTERFACE)
+  target_sources (uos-micro-test-plus INTERFACE
+                  ${_mtp_framework_sources} "${_mtp_support}/mtp_board.cpp")
+  target_include_directories (uos-micro-test-plus INTERFACE
+                              "${_mtp_framework}/include" "${_mtp_support}")
+  # hw_result.hpp (the verdict through semihosting) for the AArch boards.
+  if (IS_DIRECTORY "${CMAKE_SOURCE_DIR}/smp-support/include")
+    target_include_directories (uos-micro-test-plus INTERFACE "${CMAKE_SOURCE_DIR}/smp-support/include")
+  endif ()
+  # MTP_CONSOLE: how stdout reaches the console and the runner (mtp_board.hpp).
+  # _GNU_SOURCE: the build is strict C++20, which hides fopencookie () and sbrk ().
+  target_compile_definitions (uos-micro-test-plus INTERFACE
+                              MICRO_OS_PLUS_MICRO_TEST_PLUS_ENABLED
+                              _GNU_SOURCE
+                              MTP_CONSOLE=1
+                              MTP_HAS_SMP_BOOT=1
+                              MTP_CARRY_STARTUP=1
+                              MTP_SEMIHOST_ARGS=2)
+  # The report file: µTest++ opens --output-file with fopen (); the wrapper
+  # in mtp_board.cpp turns it into a semihosting stream.
+  target_link_options (uos-micro-test-plus INTERFACE "-Wl,--wrap=fopen")
+endif ()
+
 # ---- local tests (micro-os-scaffold local tests) ---------------------------------------
 # A user-owned tests.local.cmake next to this file holds the CMake wiring of the
 # tests listed in scripts/local-tests.txt (at the workspace root): any
@@ -310,18 +361,6 @@ function (board_test_qemu_includes _app _out)
   if (COMMAND board_test_qemu_includes_local)
     set (_local_out "")
     board_test_qemu_includes_local ("${_app}" _local_out)
-    if (NOT "${_local_out}" STREQUAL "")
-      set (${_out} ${_local_out} PARENT_SCOPE)
-      return ()
-    endif ()
-  endif ()
-  set (${_out} "" PARENT_SCOPE)
-endfunction ()
-function (board_test_libs _app _out)
-  # local tests (micro-os-scaffold local tests): tests.local.cmake may answer first.
-  if (COMMAND board_test_libs_local)
-    set (_local_out "")
-    board_test_libs_local ("${_app}" _local_out)
     if (NOT "${_local_out}" STREQUAL "")
       set (${_out} ${_local_out} PARENT_SCOPE)
       return ()

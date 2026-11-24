@@ -1,0 +1,652 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with declarations for the µTest++ runner options.
+ *
+ * @details
+ * This header provides the `runner_options` class, which holds the
+ * configuration of a test session (the reporter, the verbosity, the
+ * output file, the use of colours, the filter, and the listing of the
+ * test cases) and parses it from the command line, together with
+ * the `reporter_kind`, `verbosity`, and `colour_mode` enumerations used
+ * by its members.
+ *
+ * The options are usually parsed from the command line by the
+ * constructor taking the `main()` arguments, called by
+ * `runner::initialise (argc, argv)`; the applications without a
+ * command line, such as the embedded ones without semihosting
+ * arguments, can set them directly and pass them to
+ * `runner::initialise (options)`.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus`
+ * namespace.
+ *
+ * This file is included by `micro-os-plus/micro-test-plus.h`, which is the
+ * header that the applications include.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_RUNNER_OPTIONS_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_RUNNER_OPTIONS_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if __has_include("micro-os-plus/project-config.h")
+#include "micro-os-plus/project-config.h"
+#endif // __has_include("micro-os-plus/project-config.h")
+
+#if __has_include("micro-os-plus/micro-test-plus-defines.h")
+#include "micro-os-plus/micro-test-plus-defines.h"
+#endif // __has_include("micro-os-plus/micro-test-plus-defines.h")
+
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wpadded"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+
+  /**
+   * @ingroup micro-os-plus-micro-test-plus-cpp-api-runners
+   * @brief The verbosity levels for test reporting.
+   *
+   * @details
+   * The level is selected with the `--silent`, `--quiet`, and `--verbose`
+   * command-line options, or with `runner_options::verbosity_level`; the
+   * default is `normal`. The console output is intended for the people
+   * who watch the tests run, while the optional output file is intended
+   * for the integration with other tools. The level affects only the
+   * console output; the output file always receives the full report.
+   *
+   * The `quiet` level displays the failed checks, with the names of the
+   * suite and of the test cases that contain them, and the totals; the
+   * passed checks and the passed test cases are not displayed. To also
+   * see them, use the `verbose` level, or keep `quiet` and use an output
+   * file, which receives them.
+   *
+   * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+   */
+  enum class verbosity
+  {
+    silent = 0, /**< No console output; only the exit code is returned. */
+    quiet = 1, /**< Displays only the failed checks and the overall session
+                  summary; the TAP reporter also displays one result line
+                  per test suite, counted by the plan, and the failed
+                  checks as comments. */
+    normal = 2, /**< Displays test suite and test case results; the
+                   individual checks are shown only for failures, the
+                   passed checks being counted, and, in the TAP blocks,
+                   numbered by bare `ok` lines. */
+    verbose = 3 /**< Displays all results, including passed checks, for maximum
+                   detail. */
+  };
+
+  /**
+   * @ingroup micro-os-plus-micro-test-plus-cpp-api-runners
+   * @brief The built-in reporters.
+   *
+   * @details
+   * Selected with the `--reporter` command-line option, or with
+   * `runner_options::selected_reporter`; the default is `tap`.
+   *
+   * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+   *
+   * @since 6.0.0
+   */
+  enum class reporter_kind
+  {
+    tap, /**< The TAP reporter, compliant with TAP version 14. */
+    human /**< The human-readable reporter, with optional colours. */
+  };
+
+  /**
+   * @ingroup micro-os-plus-micro-test-plus-cpp-api-runners
+   * @brief The use of colours in the console output.
+   *
+   * @details
+   * Selected with the `--colour` command-line option (or its American
+   * spelling `--color`, or its alternative `--use-colour`, also spelled
+   * `--use-color`), or with `runner_options::colour`; the default is
+   * `automatic`. The names follow the values of `--color` in the GNU
+   * tools.
+   *
+   * Only the human-readable reporter uses colours; the TAP reporter never
+   * does, since the ANSI escape sequences are not part of the TAP syntax.
+   * The output file never receives colours, whatever the mode.
+   *
+   * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+   *
+   * @since 6.0.0
+   */
+  enum class colour_mode
+  {
+    automatic, /**< Colours are used when `stdout` is a terminal; on the
+                  platforms without `isatty()`, such as the embedded
+                  ones, they are not used. */
+    always, /**< Colours are always used, for example in the CI systems
+               that render the ANSI escape sequences but do not provide a
+               terminal, or on embedded targets whose output is displayed
+               by a terminal. */
+    never /**< Colours are never used. */
+  };
+
+  // ==========================================================================
+
+  /**
+   * @ingroup micro-os-plus-micro-test-plus-cpp-api-runners
+   * @brief The configuration of a test session, and its command-line
+   * parser.
+   *
+   * @details
+   * The options are usually constructed from the command line, by
+   * `runner::initialise (argc, argv)`, which creates the selected
+   * reporter and starts the session:
+   *
+   * @code{.cpp}
+   * tr.initialise (argc, argv);
+   * @endcode
+   *
+   * The applications that do not have a command line, such as the
+   * embedded ones without semihosting arguments, can define the options
+   * directly, starting from the defaults:
+   *
+   * @code{.cpp}
+   * mt::runner_options options{};
+   * options.selected_reporter = mt::reporter_kind::human;
+   * options.verbosity_level = mt::verbosity::verbose;
+   *
+   * tr.initialise (options);
+   * @endcode
+   *
+   * The applications can also parse the command line themselves, and
+   * adjust the result before passing it to the runner:
+   *
+   * @code{.cpp}
+   * mt::runner_options options{ argc, argv };
+   * options.list_tests = true;
+   *
+   * tr.initialise (options);
+   * @endcode
+   *
+   * The configuration members are public, since any combination of their
+   * values is valid; the command line and the results of the parsing
+   * (whether errors were found, whether an unknown option was found, and
+   * where the application arguments start) are private, since they
+   * depend on one another, and are read with the accessors.
+   *
+   * The options own their strings (the command line, the path of the
+   * output file, and the filter patterns), so they do not depend on the
+   * lifetime of the caller's strings; the runner keeps its own copy of
+   * them.
+   *
+   * @headerfile micro-test-plus.h "micro-os-plus/micro-test-plus.h"
+   *
+   * @since 6.0.0
+   */
+  class runner_options
+  {
+  public:
+    /**
+     * @brief Constructs the default options.
+     *
+     * @details
+     * The TAP reporter, the `normal` verbosity, no output file, automatic
+     * colours, no filter, and no command line; the test cases are run,
+     * not listed.
+     */
+    runner_options (void) = default;
+
+    /**
+     * @brief Constructs the options by parsing the command line.
+     *
+     * @details
+     * Starts from the defaults, and parses the µTest++ options
+     * (`--reporter`, `--silent`, `--quiet`, `--verbose`, `--output-file`,
+     * `--colour`, `--color`, `--use-colour`, `--use-color`, `--filter`,
+     * `--list-tests`, `--list`, `--help`, and `-h`). The parsing ends at the
+     * first argument that does not start with a dash (an application
+     * argument), or at the first `--` alone; that argument, and all the
+     * following ones, are left to the application, and are available from
+     * `application_arguments()`. An option argument given
+     * separately (`--reporter human`) belongs to its option and does not
+     * end the parsing. Before that point, the arguments starting with a
+     * dash that are not µTest++ options are reported as unknown options;
+     * an application that receives such arguments first must precede
+     * them with `--`.
+     *
+     * A missing option argument, an unknown reporter name, an unknown
+     * colour mode, a colour mode given separately after `--colour` or
+     * `--color`, or an unknown option, is recorded in `errors()`, and
+     * makes `has_errors()` true; the constructor writes nothing. The
+     * parsing continues, to record all the errors, but
+     * `runner::initialise()` then runs no test: it writes the errors on
+     * `stderr`, on the console, and in the output file, if any,
+     * followed, for an unknown option, by a line suggesting `--help`,
+     * and `run_suites()` returns 2.
+     *
+     * The `argv[]` strings are copied, so they need not outlive the
+     * options.
+     *
+     * @param argc The argument count from main().
+     * @param argv The argument vector from main().
+     *
+     * @since 6.0.0
+     */
+    explicit runner_options (int argc, char* argv[]);
+
+    /**
+     * @brief Copy constructor.
+     *
+     * @details
+     * Copies all the members, including the strings and the results of
+     * the parsing, so the copy initialises a runner exactly as the
+     * original does; the copy is independent of the original.
+     *
+     * @param other The instance to copy.
+     *
+     * @since 6.0.0
+     */
+    runner_options (const runner_options& other) = default;
+
+    /**
+     * @brief Move constructor.
+     *
+     * @details
+     * Moves the strings and the vectors, and copies the other members;
+     * `other` is left valid, with unspecified strings.
+     *
+     * @param other The instance to move from.
+     *
+     * @since 6.0.0
+     */
+    runner_options (runner_options&& other) = default;
+
+    /**
+     * @brief Copy assignment operator.
+     *
+     * @details
+     * Replaces all the members with copies of those of `other`.
+     *
+     * Not defaulted: it copies `other` with the copy constructor, and
+     * moves the copy into this instance, since the copy assignment of the
+     * vectors of strings uses `std::copy`, which triggers
+     * `-Waggregate-return` in the standard library headers of GCC on some
+     * targets. If the copy fails, this instance is not changed.
+     *
+     * @param other The instance to copy.
+     * @return Reference to this instance.
+     *
+     * @since 6.0.0
+     */
+    runner_options&
+    operator= (const runner_options& other);
+
+    /**
+     * @brief Move assignment operator.
+     *
+     * @details
+     * Moves the strings and the vectors, and copies the other members.
+     *
+     * @param other The instance to move from.
+     * @return Reference to this instance.
+     *
+     * @since 6.0.0
+     */
+    runner_options&
+    operator= (runner_options&& other)
+        = default;
+
+    /**
+     * @brief Destructor.
+     *
+     * @details
+     * Releases the owned strings.
+     */
+    ~runner_options () = default;
+
+    /**
+     * @brief The reporter that displays the results.
+     *
+     * @details
+     * Set by `--reporter=<name>` or `--reporter <name>`, where the name
+     * is `tap` or `human`.
+     */
+    reporter_kind selected_reporter{ reporter_kind::tap };
+
+    /**
+     * @brief The level of detail of the console output.
+     *
+     * @details
+     * Set by `--silent`, `--quiet`, or `--verbose`; when several are
+     * given, the last one takes effect.
+     */
+    micro_test_plus::verbosity verbosity_level{
+      micro_test_plus::verbosity::normal
+    };
+
+    /**
+     * @brief Path of the optional output file.
+     *
+     * @details
+     * Set by `--output-file=<path>` or `--output-file <path>`. When it
+     * is empty (the default), no file is written. The reporter opens the
+     * file when it is created by `initialise()`; if the file cannot be
+     * opened, the error is reported on `stderr` and on the console, no
+     * test is run, and `runner::run_suites()` returns 2.
+     */
+    std::string output_file_path{};
+
+    /**
+     * @brief Whether the console output uses colours.
+     *
+     * @details
+     * Set by `--colour[=<when>]`, or by its American spelling
+     * `--color[=<when>]`, as in the GNU tools, where `<when>` is
+     * `always`, `never`, or `auto`, or one of their GNU synonyms (`yes`
+     * and `force`, `no` and `none`, `tty` and `if-tty`), and `--colour`
+     * alone means `always`; the value is accepted only after `=`, and
+     * a mode word in the next argument, such as `--colour never`, is
+     * reported as an error, since it was probably meant as the value (an
+     * application argument of that kind can follow `--`). The
+     * alternative `--use-colour=<mode>` or `--use-colour <mode>`, also
+     * spelled `--use-color`, as in Catch2 and Boost UT, takes `yes`, `no`,
+     * or `auto`, and also accepts the other values of `--colour`. Used
+     * only by the human-readable reporter.
+     *
+     * @since 6.0.0
+     */
+    colour_mode colour{ colour_mode::automatic };
+
+    /**
+     * @brief The patterns that select the suites and the test cases to
+     * run, one per nesting level.
+     *
+     * @details
+     * Each `--filter=<pattern>` or `--filter <pattern>` option adds one
+     * pattern; unlike the other options, `--filter` may be repeated. As
+     * with `--grep` in node-tap, the first pattern applies to the suite
+     * names, the second to the names of the test cases, and each further
+     * pattern to the names of the test cases nested one level deeper; the
+     * levels without a pattern are not filtered.
+     *
+     * Within a pattern, `|` separates alternatives; a name matches when
+     * it matches any of them, as defined by `utility::is_match()`: `*`
+     * matches any sequence of characters, `?` matches any single
+     * character, the match is case-sensitive, and the alternative must
+     * cover the whole name.
+     *
+     * The suites and the test cases that do not match are reported as
+     * skipped, and their bodies are not called. The top suite is never
+     * skipped as a whole, since its body is `main()`, but when its name
+     * does not match the first pattern, all its test cases are skipped.
+     *
+     * When the list is empty (the default), everything runs.
+     *
+     * @since 6.0.0
+     */
+    std::vector<std::string> filter_patterns{};
+
+    /**
+     * @brief Whether the test cases are listed instead of run.
+     *
+     * @details
+     * Set by the `--list-tests` option, or by its short form `--list`.
+     * When set, the suite bodies run, as usual, to create their test
+     * cases, but the bodies of the test cases do not, so no check is
+     * evaluated. The selected test cases (see `filter_patterns`) are
+     * listed under the names of their suites, as Catch2 lists them:
+     *
+     * @code{.txt}
+     * All available test cases:
+     *   Sample
+     *     Check various conditions
+     *     Check strings
+     *   Explicit namespace suite
+     *     Check one
+     * 3 test cases in 2 test suites
+     * @endcode
+     *
+     * The header is `Matching test cases:` when there are filter
+     * patterns, and the suites without selected test cases are not
+     * listed. The nested test cases are not listed, since they are
+     * created by the bodies of their parents, which do not run. The list
+     * is made of plain lines, the same with both reporters and with all
+     * the verbosity levels, and is written to the console and to the
+     * output file, if any; no report is written, and `run_suites()`
+     * returns 0, 1 if a call was rejected or an exception escaped a
+     * suite body, which makes the list incomplete (the error is written
+     * in the list, as an `error:` line, or a `# error:` comment with the
+     * TAP reporter), or 2 after an option error, or if the filters
+     * selected no test case.
+     *
+     * @since 6.0.0
+     */
+    bool list_tests{ false };
+
+    /**
+     * @brief Whether to display the usage and the list of the options,
+     * instead of running the tests.
+     *
+     * @details
+     * Set by the `--help` option, or by its short form `-h`, which is the
+     * only short option. The runner then writes, on the console,
+     * the usage and the list of the options, runs no test, creates no
+     * output file, and `run_suites()` returns 0, or 2 after an option
+     * error. The text is written also with the `silent` verbosity, since
+     * it was requested.
+     *
+     * @since 6.0.0
+     */
+    bool help{ false };
+
+    /**
+     * @brief Checks whether errors were found while parsing the command
+     * line.
+     *
+     * @details
+     * The constructor only records the errors; when set, the runner runs
+     * no test and `runner::run_suites()` returns 2. Never set for the
+     * default options.
+     *
+     * @par Parameters
+     *   None.
+     * @return `true` if at least one error was found.
+     *
+     * @since 6.0.0
+     */
+    [[nodiscard]] bool
+    has_errors (void) const noexcept;
+
+    /**
+     * @brief Checks whether an unknown option was found while parsing the
+     * command line.
+     *
+     * @details
+     * Set together with the corresponding error; the runner then adds a
+     * line suggesting `--help` to the errors it writes on the console.
+     *
+     * @par Parameters
+     *   None.
+     * @return `true` if at least one unknown option was found.
+     *
+     * @since 6.0.0
+     */
+    [[nodiscard]] bool
+    has_unknown_option (void) const noexcept;
+
+    /**
+     * @brief Returns the errors found while parsing the command line.
+     *
+     * @details
+     * Each message is the text of the error, without the `error:`
+     * prefix and the newline, in the order of the arguments. The runner
+     * writes them on `stderr` and on the console when it refuses to run
+     * the tests.
+     *
+     * @par Parameters
+     *   None.
+     * @return A reference to the messages; empty if there were no errors.
+     *
+     * @since 6.0.0
+     */
+    [[nodiscard]] const std::vector<std::string>&
+    errors (void) const noexcept;
+
+    /**
+     * @brief Returns the complete command line, including `argv[0]`, if
+     * any.
+     *
+     * @details
+     * A copy of the `argv[]` strings of `main()`, set when the options
+     * are parsed from the command line; empty for the default options.
+     * When not empty, the reporters list it at the beginning of the
+     * report, and `runner::add_top_suite()` derives the default name of
+     * the top suite from its first element. The arguments left to the
+     * application are returned by `application_arguments()`.
+     *
+     * The command line is read-only, since `application_arguments()`
+     * depends on the position where the parsing ended, which would be
+     * stale if the strings were changed afterwards.
+     *
+     * @par Parameters
+     *   None.
+     * @return A reference to the strings; empty if the options were not
+     * parsed from a command line.
+     *
+     * @since 6.0.0
+     */
+    [[nodiscard]] const std::vector<std::string>&
+    arguments (void) const noexcept;
+
+    /**
+     * @brief Returns the arguments left to the application.
+     *
+     * @details
+     * The arguments that follow the µTest++ options on the command line:
+     * the first argument that does not start with a dash, if the parsing
+     * ended there, and all the following ones, unchanged, or, if the
+     * parsing ended at a `--` alone, the arguments after it, which may
+     * start with `--`. The `--` itself and `argv[0]`
+     * are not included. The span refers to the command line, so it is valid
+     * as long as the options are not modified or destroyed.
+     *
+     * @par Parameters
+     *   None.
+     * @return A span of the arguments; empty if there are none, or if the
+     * options were not parsed from a command line.
+     *
+     * @since 6.0.0
+     */
+    [[nodiscard]] std::span<const std::string>
+    application_arguments (void) const noexcept;
+
+  private:
+    /**
+     * @brief Records a command-line error.
+     *
+     * @details
+     * Appends the text to `errors_`; nothing is written, so that
+     * parsing the command line has no output.
+     *
+     * @param before The start of the message, without the `error:`
+     * prefix.
+     * @param value The variable part, usually an option or a value.
+     * @param after The end of the message, without the newline.
+     * @par Returns
+     *   Nothing.
+     */
+    void
+    add_error (std::string_view before, std::string_view value = {},
+               std::string_view after = {});
+
+    /**
+     * @brief The errors found while parsing the command line.
+     *
+     * @details
+     * Appended by `add_error()`; returned by `errors()`, and tested by
+     * `has_errors()`.
+     */
+    std::vector<std::string> errors_{};
+
+    /**
+     * @brief Whether an unknown option was found.
+     *
+     * @details
+     * Set by the parsing constructor, with the error; tested by
+     * `has_unknown_option()`.
+     */
+    bool unknown_option_{ false };
+
+    /**
+     * @brief The complete command line, including `argv[0]`, if any.
+     *
+     * @details
+     * Filled by the parsing constructor with a copy of the `argv[]`
+     * strings; returned by `arguments()`, and used by
+     * `application_arguments()`.
+     */
+    std::vector<std::string> arguments_{};
+
+    /**
+     * @brief The index in `arguments_` of the first argument left to the
+     * application.
+     *
+     * @details
+     * Set by the parsing constructor, where the parsing of the µTest++
+     * options ends; used by `application_arguments()`.
+     */
+    std::size_t application_begin_{ 0 };
+  };
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ============================================================================
+// Templates, inlines & constexpr implementations.
+
+#include "inlines/runner-options-inlines.h"
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_RUNNER_OPTIONS_H_
+
+// ----------------------------------------------------------------------------

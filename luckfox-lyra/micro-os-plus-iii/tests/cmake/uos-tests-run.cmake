@@ -20,6 +20,28 @@
 
 include_guard (GLOBAL)
 
+# ---- SCAFFOLD µTest++ (micro-os-scaffold --micro-test-plus) ----------------------------------
+# A mtp-* test gets its name as argv[0] and asks for its complete TAP
+# report in a file, through semihosting (or, hosted, as plain arguments):
+# <build>/mtp-reports/<ctest name>.tap. Other tests are unchanged.
+function (uos_mtp_report _app _name _out)
+  if (_app MATCHES "^mtp-")
+    file (MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mtp-reports")
+    set (${_out} "${CMAKE_BINARY_DIR}/mtp-reports/${_name}.tap" PARENT_SCOPE)
+  else ()
+    set (${_out} "" PARENT_SCOPE)
+  endif ()
+endfunction ()
+# QEMU: the -semihosting-config value.
+function (uos_mtp_qemu_semihosting _app _name _out)
+  uos_mtp_report ("${_app}" "${_name}" _report)
+  if (_report)
+    set (${_out} "enable=on,target=native,arg=${_app},arg=--output-file,arg=${_report}" PARENT_SCOPE)
+  else ()
+    set (${_out} "enable=on,target=native" PARENT_SCOPE)
+  endif ()
+endfunction ()
+
 # The verdict, from the RESULT line every test prints.
 set (UOS_TESTS_RESULT_PROPERTIES
      PASS_REGULAR_EXPRESSION "RESULT: PASS"
@@ -88,10 +110,12 @@ function (uos_tests_add_qemu)
     set (_drive -drive "file=${_img},if=sd,format=raw")
   endif ()
 
+  # SCAFFOLD µTest++
+  uos_mtp_qemu_semihosting ("${_a_APP}" "${_a_NAME}" _semi)
   add_test (
     NAME "${_a_NAME}"
     COMMAND "${_a_QEMU}" ${_a_MACHINE} -nographic -serial none -monitor none
-            -semihosting-config enable=on,target=native ${_drive} ${_boot}
+            -semihosting-config "${_semi}" ${_drive} ${_boot}
   )
   uos_tests_timeout ("${_a_APP}" _timeout)
   set_tests_properties ("${_a_NAME}" PROPERTIES
@@ -109,7 +133,13 @@ endfunction ()
 # sd-image.py, sd_test's with seed.bin), deleted when the run ends.
 function (uos_tests_add_host)
   cmake_parse_arguments (_a "" "NAME;APP;PROGRAM" "" ${ARGN})
-  add_test (NAME "${_a_NAME}" COMMAND "${_a_PROGRAM}")
+  # SCAFFOLD µTest++
+  uos_mtp_report ("${_a_APP}" "${_a_NAME}" _report)
+  set (_args)
+  if (_report)
+    set (_args --output-file "${_report}")
+  endif ()
+  add_test (NAME "${_a_NAME}" COMMAND "${_a_PROGRAM}" ${_args})
   uos_tests_timeout ("${_a_APP}" _timeout)
   set_tests_properties ("${_a_NAME}" PROPERTIES
     LABELS "host" TIMEOUT ${_timeout} ${UOS_TESTS_RESULT_PROPERTIES})
@@ -181,6 +211,14 @@ function (uos_tests_add_hwd)
   # function's arguments there): join the pieces with newlines, which Tcl
   # reads the same way.
   list (JOIN _a_PRELOAD "\n" _preload)
+  # SCAFFOLD µTest++: the command line, on the core that boots.
+  uos_mtp_report ("${_a_APP}" "${_a_NAME}" _report)
+  if (_report)
+    if (_preload)
+      string (APPEND _preload "\n")
+    endif ()
+    string (APPEND _preload "arm semihosting_cmdline ${_a_APP} --output-file ${_report}")
+  endif ()
   add_test (NAME "${_a_NAME}"
     COMMAND "${UOS_TESTS_OPENOCD}" ${_ocd_args}
             -f "${CMAKE_SOURCE_DIR}/cmake/uos-hwd.tcl"
@@ -236,9 +274,24 @@ function (uos_tests_add_openocd)
     list (APPEND _ocd_args -c "${_c}")
   endforeach ()
   list (APPEND _ocd_args -f "${_a_CFG}")
+  # SCAFFOLD µTest++: the command line, after the last "arm semihosting enable".
+  uos_mtp_report ("${_a_APP}" "${_a_NAME}" _report)
+  set (_last -1)
+  set (_i 0)
+  foreach (_c IN LISTS _a_COMMANDS)
+    if (_c STREQUAL "arm semihosting enable")
+      set (_last ${_i})
+    endif ()
+    math (EXPR _i "${_i} + 1")
+  endforeach ()
+  set (_i 0)
   foreach (_c IN LISTS _a_COMMANDS)
     string (REPLACE "@ELF@" "${_a_ELF}" _c "${_c}")
     list (APPEND _ocd_args -c "${_c}")
+    if (_report AND _i EQUAL _last)
+      list (APPEND _ocd_args -c "arm semihosting_cmdline ${_a_APP} --output-file ${_report}")
+    endif ()
+    math (EXPR _i "${_i} + 1")
   endforeach ()
   add_test (NAME "${_a_NAME}" COMMAND "${UOS_TESTS_OPENOCD}" ${_ocd_args})
   if (_a_TIMEOUT)

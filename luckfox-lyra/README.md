@@ -32,6 +32,9 @@ never runs `xpm link`.
 | `aarch32-luckfox-lyra` | `smp-mat-sdcard-test` | portable | `2.19` |
 | `aarch32-luckfox-lyra` | `clock-test` | portable | `2.20` |
 | `aarch32-luckfox-lyra` | `mutex-stress` | suite | `2.21` |
+| `aarch32-luckfox-lyra` | `mtp-example` | micro-test-plus | — |
+| `aarch32-luckfox-lyra` | `mtp-args` | micro-test-plus | — |
+| `aarch32-luckfox-lyra` | `mtp-smp` | micro-test-plus | — |
 
 Kinds: **board** (`tests/platforms/<platform>/tests/<test>/`), **portable** and
 **suite** (shared, `tests/sources/<test>/`).
@@ -89,6 +92,26 @@ Results: `build/<configuration>/ctest.xml` (JUnit) and `ctest.log` (full output)
 build tree. A re-scaffold rebuilds the workspace from the source: keep tests you want to
 last in the source repository.
 
+## µTest++ (`--micro-test-plus`)
+
+µTest++ 6.0.0 from `https://github.com/micro-os-plus/micro-test-plus-xpack.git` (v6.0.0) is in
+`third_party/micro-test-plus/`; the board support (console, verdict, report file, cores) is in
+`micro-os-plus-iii/tests/mtp/` (its README lists the defines and the SMP helpers).
+
+| Platform | Status | Console | SMP boot | Starter tests |
+| --- | --- | --- | --- | --- |
+| `aarch32-luckfox-lyra` | integrated | 1 | 1 | `mtp-example`, `mtp-args`, `mtp-smp` |
+
+A µTest++ test is a folder `micro-os-plus-iii/tests/platforms/<platform>/tests/mtp-<name>/`:
+copy `mtp-example/` (or `mtp-smp/` for a multi-core test). Every `mtp-*` folder links
+µTest++ through the block at the end of the platform's `tests/tests.cmake`.
+
+Each `mtp-*` case gets its name as `argv[0]` and `--output-file <report>`: the complete
+TAP report is `micro-os-plus-iii/tests/build/<configuration>/mtp-reports/<ctest name>.tap`
+(written through semihosting under QEMU and on the board). The registration helpers in
+`micro-os-plus-iii/tests/cmake/uos-tests-run.cmake` carry the change, marked
+`SCAFFOLD µTest++`; other tests are unchanged.
+
 ## Source
 
 | Repository | Folder | Version | Commit |
@@ -109,6 +132,8 @@ node bin/scaffold.js \
   /home/dan/Work/micro-os-scaffold-ctest-examples/luckfox-lyra \
   --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
   --select aarch32-luckfox-lyra \
+  --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
+  --micro-test-plus-ref v6.0.0 \
   --yes
 ```
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T07:20:58.140Z",
+  "generatedAt": "2026-11-24T11:10:09.825Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
@@ -166,6 +166,21 @@
           "app": "mutex-stress",
           "kind": "suite",
           "selectionId": "2.21"
+        },
+        {
+          "app": "mtp-example",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-args",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-smp",
+          "kind": "micro-test-plus",
+          "selectionId": null
         }
       ]
     }
@@ -179,7 +194,80 @@
     }
   ],
   "pruned": [],
-  "regenerateOptions": [],
+  "regenerateOptions": [
+    "--micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "--micro-test-plus-ref v6.0.0"
+  ],
+  "microTestPlus": {
+    "spec": "https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "ref": "v6.0.0",
+    "kind": "git",
+    "name": "@micro-os-plus/micro-test-plus",
+    "version": "6.0.0",
+    "commit": "ffceb78",
+    "destination": "third_party/micro-test-plus",
+    "support": "micro-os-plus-iii/tests/mtp",
+    "force": false,
+    "platforms": [
+      {
+        "platform": "aarch32-luckfox-lyra",
+        "status": "integrated",
+        "runtime": [
+          {
+            "rule": "linker script: .init_array kept, with __init_array_start/__init_array_end",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/device/linker-scripts/linker.ld"
+          },
+          {
+            "rule": "linker script: heap region _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/device/linker-scripts/linker.ld"
+          },
+          {
+            "rule": "boot code runs the static constructors",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/src/startup.S"
+          },
+          {
+            "rule": "the heap is given to the µOS++ free store (malloc) at start-up",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/src/platform-support.cpp"
+          },
+          {
+            "rule": "sbrk () over _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/src/libc/_sbrk.c"
+          }
+        ],
+        "console": {
+          "model": 1,
+          "why": "uart.hpp has putc_uart and the port's semihosting.hpp has write_str"
+        },
+        "smpBoot": 1,
+        "hwdOnly": false,
+        "starters": [
+          "mtp-example",
+          "mtp-args",
+          "mtp-smp"
+        ],
+        "tests": "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/tests"
+      }
+    ],
+    "registration": [
+      "uos_tests_add_qemu",
+      "uos_tests_add_host",
+      "uos_tests_add_hwd",
+      "uos_tests_add_openocd"
+    ]
+  },
+  "localTests": {
+    "file": "scripts/local-tests.txt",
+    "tests": [],
+    "keep": [
+      "micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/openocd.cfg"
+    ],
+    "hookFiles": []
+  },
   "build": {
     "results": [
       {

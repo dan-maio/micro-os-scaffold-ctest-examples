@@ -57,13 +57,24 @@ The workspaces:
     (`make`, then `output/usb_test_host --big <file>`). A 1 MiB file sent
     during `smp_test7` echoed back identical for its first 512 KiB, until
     the test ended.
-  - No µTest++ yet. On this board, semihosting calls made while cores 1
-    and 2 run are sometimes not caught by OpenOCD (the RK3506's Cortex-A7
-    traps with `svc`, not `HLT`). Core 0 then loops in the port's
-    `svc_handler`, so `mtp-args` hung after its first suite. A
-    file-transfer test confirmed this: 16 KiB round trip OK on core 0
-    alone, a hang at a random call with all three cores running. The
-    classic tests make one or two semihosting calls, at the end.
+  - µTest++ (`mtp-args`, `mtp-example`, `mtp-smp`) on the board
+    (2026-11-24): 10/10, 27/27, and 75/75 with a 2.88x speed-up on
+    3 cores. `smp_test0` passes alongside.
+  - The fix that makes µTest++ work here is in this workspace's
+    `micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/openocd.cfg`.
+    `scripts/local-tests.txt` keeps the file across re-scaffolds.
+    - With many semihosting calls (µTest++'s console lines and report
+      file), OpenOCD's background polling sometimes stopped noticing that
+      core 0 had halted at a semihosting trap. The core waited, OpenOCD
+      still reported it as running, and the test hung until its timeout.
+      Core 0's debug registers confirmed it (halted, by the SVC vector
+      catch), and a single poll served the call.
+    - A Tcl timer in the config now polls core 0 every 100 ms.
+    - Without it, `mtp-args` and a 32 KiB semihosting file test hung;
+      with it, they pass.
+  - Each semihosting call costs about 0.55 s through the WCH-Link (its
+    USB HID transfers), so a µTest++ test takes minutes: `mtp-args` 148 s,
+    `mtp-example` 196 s, `mtp-smp` 378 s.
   - The source gives each Lyra hardware case a 1200 s CTest timeout, which
     only matters when a test hangs.
 

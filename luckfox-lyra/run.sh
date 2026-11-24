@@ -106,7 +106,7 @@ case "$CONFIG" in
     PACKAGES=('micro-os-plus-iii-aarch32:aarch32/micro-os-plus-iii-aarch32' 'micro-os-plus-iii-devices-storage:common/micro-os-plus-iii-devices-storage' 'micro-os-plus-iii-devices-rk3506:aarch32/micro-os-plus-iii-devices-rk3506')
     TOOL_DIRS=('/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin' '/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin' '/home/dan/.local/xPacks/@xpack-dev-tools/cmake/3.26.5-1.1/.content/bin' '/home/dan/.local/xPacks/@xpack-dev-tools/ninja-build/1.11.1-3.1/.content/bin')
     BUILD_XPACKS=()
-    SELECTED_APPS=('smp_test5' 'smp_test6' 'smp_test7' 'smp_test_int' 'smp_test_int2' 'smp_test_int3' 'smp_test_int4' 'smp_test_int5' 'smp_test0' 'smp_test1' 'smp_test2' 'smp_test3' 'smp_test4' 'smp-num-test' 'smp-pipeline-test' 'smp-pro-cons-test' 'smp-mat-test' 'sd_test' 'smp-mat-sdcard-test' 'clock-test' 'mutex-stress')
+    SELECTED_APPS=('smp_test5' 'smp_test6' 'smp_test7' 'smp_test_int' 'smp_test_int2' 'smp_test_int3' 'smp_test_int4' 'smp_test_int5' 'smp_test0' 'smp_test1' 'smp_test2' 'smp_test3' 'smp_test4' 'smp-num-test' 'smp-pipeline-test' 'smp-pro-cons-test' 'smp-mat-test' 'sd_test' 'smp-mat-sdcard-test' 'clock-test' 'mutex-stress' 'mtp-example' 'mtp-args' 'mtp-smp')
     ;;
   *)
     echo "Unknown configuration: $CONFIG" >&2
