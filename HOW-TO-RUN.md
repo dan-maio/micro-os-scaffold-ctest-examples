@@ -46,6 +46,27 @@ The workspaces:
   - `smp-mat-test`, `mtp-example`, `mtp-args`, `mtp-smp` and `mtp-stdcpp`.
   - Under QEMU: 5/5 passed.
 
+- `luckfox-lyra/`: Luckfox Lyra (Rockchip RK3506, 3x Cortex-A7, AArch32),
+  WCH-Link probe (SWD), hardware only.
+  - The whole platform: the 8 Lyra tests (`smp_test5` to `smp_test7`,
+    `smp_test_int` to `smp_test_int5`) and the 13 shared ones.
+  - On the board (2026-11-24): 21/21 passed, each run on its own with a
+    5-minute cap (16 s to 271 s per test).
+  - `smp_test6` and `smp_test7` are USB tests. Their host tool is
+    `micro-os-plus-iii/tests/platforms/aarch32-luckfox-lyra/tests/smp_test6/host/`
+    (`make`, then `output/usb_test_host --big <file>`). A 1 MiB file sent
+    during `smp_test7` echoed back identical for its first 512 KiB, until
+    the test ended.
+  - No µTest++ yet. On this board, semihosting calls made while cores 1
+    and 2 run are sometimes not caught by OpenOCD (the RK3506's Cortex-A7
+    traps with `svc`, not `HLT`). Core 0 then loops in the port's
+    `svc_handler`, so `mtp-args` hung after its first suite. A
+    file-transfer test confirmed this: 16 KiB round trip OK on core 0
+    alone, a hang at a random call with all three cores running. The
+    classic tests make one or two semihosting calls, at the end.
+  - The source gives each Lyra hardware case a 1200 s CTest timeout, which
+    only matters when a test hangs.
+
 The hand-made tests are **local tests**. `scripts/local-tests.txt` lists
 them, and `micro-os-plus-iii/tests/platforms/<p>/tests/tests.local.cmake`
 holds their CMake wiring (they link `stateos-stdc++` and µTest++). A

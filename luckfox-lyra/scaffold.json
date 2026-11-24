@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 2,
+  "layout": "v2",
+  "generatedAt": "2026-11-24T07:20:58.140Z",
+  "generator": {
+    "name": "micro-os-scaffold",
+    "version": "1.0.0",
+    "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
+  },
+  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/luckfox-lyra",
+  "kernel": {
+    "dir": "micro-os-plus-iii",
+    "version": "7.2.0-pre.1",
+    "commit": "b9887856"
+  },
+  "packages": [
+    {
+      "id": "micro-os-plus-iii-aarch32",
+      "dir": "aarch32/micro-os-plus-iii-aarch32",
+      "version": "0.1.0-pre.1",
+      "commit": "2eb3719"
+    },
+    {
+      "id": "micro-os-plus-iii-devices-rk3506",
+      "dir": "aarch32/micro-os-plus-iii-devices-rk3506",
+      "version": "0.1.0-pre.1",
+      "commit": "d84cd46"
+    },
+    {
+      "id": "micro-os-plus-iii-devices-storage",
+      "dir": "common/micro-os-plus-iii-devices-storage",
+      "version": "0.1.0-pre.1",
+      "commit": "7c6cd98"
+    }
+  ],
+  "selection": [
+    {
+      "platform": "aarch32-luckfox-lyra",
+      "apps": [
+        "smp_test5",
+        "smp_test6",
+        "smp_test7",
+        "smp_test_int",
+        "smp_test_int2",
+        "smp_test_int3",
+        "smp_test_int4",
+        "smp_test_int5",
+        "smp_test0",
+        "smp_test1",
+        "smp_test2",
+        "smp_test3",
+        "smp_test4",
+        "smp-num-test",
+        "smp-pipeline-test",
+        "smp-pro-cons-test",
+        "smp-mat-test",
+        "sd_test",
+        "smp-mat-sdcard-test",
+        "clock-test",
+        "mutex-stress"
+      ],
+      "all": true,
+      "tests": [
+        {
+          "app": "smp_test5",
+          "kind": "board",
+          "selectionId": "2.1"
+        },
+        {
+          "app": "smp_test6",
+          "kind": "board",
+          "selectionId": "2.2"
+        },
+        {
+          "app": "smp_test7",
+          "kind": "board",
+          "selectionId": "2.3"
+        },
+        {
+          "app": "smp_test_int",
+          "kind": "board",
+          "selectionId": "2.4"
+        },
+        {
+          "app": "smp_test_int2",
+          "kind": "board",
+          "selectionId": "2.5"
+        },
+        {
+          "app": "smp_test_int3",
+          "kind": "board",
+          "selectionId": "2.6"
+        },
+        {
+          "app": "smp_test_int4",
+          "kind": "board",
+          "selectionId": "2.7"
+        },
+        {
+          "app": "smp_test_int5",
+          "kind": "board",
+          "selectionId": "2.8"
+        },
+        {
+          "app": "smp_test0",
+          "kind": "portable",
+          "selectionId": "2.9"
+        },
+        {
+          "app": "smp_test1",
+          "kind": "portable",
+          "selectionId": "2.10"
+        },
+        {
+          "app": "smp_test2",
+          "kind": "portable",
+          "selectionId": "2.11"
+        },
+        {
+          "app": "smp_test3",
+          "kind": "portable",
+          "selectionId": "2.12"
+        },
+        {
+          "app": "smp_test4",
+          "kind": "portable",
+          "selectionId": "2.13"
+        },
+        {
+          "app": "smp-num-test",
+          "kind": "portable",
+          "selectionId": "2.14"
+        },
+        {
+          "app": "smp-pipeline-test",
+          "kind": "portable",
+          "selectionId": "2.15"
+        },
+        {
+          "app": "smp-pro-cons-test",
+          "kind": "portable",
+          "selectionId": "2.16"
+        },
+        {
+          "app": "smp-mat-test",
+          "kind": "portable",
+          "selectionId": "2.17"
+        },
+        {
+          "app": "sd_test",
+          "kind": "portable",
+          "selectionId": "2.18"
+        },
+        {
+          "app": "smp-mat-sdcard-test",
+          "kind": "portable",
+          "selectionId": "2.19"
+        },
+        {
+          "app": "clock-test",
+          "kind": "portable",
+          "selectionId": "2.20"
+        },
+        {
+          "app": "mutex-stress",
+          "kind": "suite",
+          "selectionId": "2.21"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "aarch32-luckfox-lyra-cmake-gcc-debug",
+      "platform": "aarch32-luckfox-lyra",
+      "buildType": "Debug",
+      "toolchainFileName": "arm-none-eabi-gcc.cmake"
+    }
+  ],
+  "pruned": [],
+  "regenerateOptions": [],
+  "build": {
+    "results": [
+      {
+        "name": "aarch32-luckfox-lyra-cmake-gcc-debug",
+        "status": "pass",
+        "log": "build-logs/aarch32-luckfox-lyra-cmake-gcc-debug.build.log"
+      }
+    ]
+  }
+}
