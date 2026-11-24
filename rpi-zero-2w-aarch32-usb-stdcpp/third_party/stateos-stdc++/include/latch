@@ -1,0 +1,5 @@
+// <latch>: the µOS++ III implementation, found before the toolchain's own.
+#ifndef __STATEOS_STDCXX_LATCH_WRAPPER
+#define __STATEOS_STDCXX_LATCH_WRAPPER
+#include "inc/latch.hh"
+#endif

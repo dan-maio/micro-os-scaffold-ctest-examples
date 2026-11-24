@@ -14,3 +14,6 @@
 
 # micro-os-scaffold: an interrupted run's stash of the local tests.
 .scaffold-local-stash/
+
+# Python byte code from the host test apps.
+__pycache__/

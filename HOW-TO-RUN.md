@@ -107,6 +107,23 @@ The workspaces:
     (`027acb3`: the driver receives into its own aligned buffer). The
     test's `README.md` has the details.
 
+- `rpi-zero-2w-aarch32-usb-stdcpp/`: the same as the previous workspace, on
+  the Zero 2 W in AArch32 mode.
+  - `usb_test`, `sd_test`, µTest++, `mtp-stdcpp`, and the local test
+    `usb-sd-stdcpp`. Its code is the same as the AArch64 one, with 16 KiB
+    `std::thread` stacks (`STATEOS_STDCPP_THREAD_STACK_BYTES=16384`;
+    the stdc++ default is 4 KiB outside AArch64).
+  - JTAG at 10000 kHz: the workspace keeps its own `bcm2837-aarch32.cfg`
+    (`keep` in `scripts/local-tests.txt`).
+  - Under QEMU: 7/7 passed (the USB tests report SKIP).
+  - On the board (2026-11-24):
+    - `host_xfer.py`'s full matrix (0 B to 1 MiB) passed in 3.5 s:
+      19 commands, 4 cores active, `RESULT: PASS`;
+    - a random 1 MiB file matched byte for byte, with the board's CRC equal
+      to the host's.
+  - This confirms the bcm283x USB driver fix (`027acb3`) for the AArch32
+    driver too.
+
 The hand-made tests are **local tests**. `scripts/local-tests.txt` lists
 them, and `micro-os-plus-iii/tests/platforms/<p>/tests/tests.local.cmake`
 holds their CMake wiring (they link `stateos-stdc++` and µTest++). A

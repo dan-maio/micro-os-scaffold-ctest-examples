@@ -1,0 +1,258 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with inline implementations for the µTest++
+ * check result.
+ *
+ * @details
+ * This header provides the inline and template implementations for the
+ * check result: the template function `init()`, the result accessor, and the
+ * `operator<<` that accumulates the messages of the checks (written by the
+ * expression formatter, in its plain mode). The default constructor, the
+ * non-template function `start()`, and the destructor are defined in
+ * `src/check-result.cpp`.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus::detail`
+ * namespace.
+ *
+ * This file is included by `check-result.h`; the applications include
+ * `micro-os-plus/micro-test-plus.h`, not this file.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_CHECK_RESULT_INLINES_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_CHECK_RESULT_INLINES_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if __has_include("micro-os-plus/diag/trace.h")
+#include "micro-os-plus/diag/trace.h"
+#endif // __has_include("micro-os-plus/diag/trace.h")
+
+#include <concepts>
+#include <cstdio>
+#include <functional>
+#include <utility>
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Waggregate-return"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+
+  namespace detail
+  {
+    // ========================================================================
+
+    /**
+     * @details
+     * The expression is evaluated, and the result is passed, together with
+     * the kind of the check and whether the expression is a framework
+     * comparator, to the non-template `start()`, which also stores the
+     * source location and the test case. The kind,
+     * `check_kind::requirement` for `require()`, determines whether the
+     * test case is stopped if the check fails.
+     *
+     * The expression formatter of the reporter, which is shared by all
+     * checks, is then assigned to this check by `begin_check()`, which sets
+     * aside the text of a previous check not yet reported, if any. The
+     * expression is formatted into it only when the outcome is written: on
+     * failure, or, if @p writes_passed, also on success. Otherwise the
+     * text of this check stays empty, and the operands, which may be
+     * application types with an expensive `operator<<`, are not formatted.
+     *
+     * An expression that is only explicitly convertible to `bool`, such as
+     * a `std::optional` or a `std::unique_ptr`, is written as the result
+     * of the conversion, `true` or `false`, since that is what the check
+     * tested; its own value (the contents of a `std::optional<bool>`, for
+     * example) could contradict the outcome, and many such types cannot be
+     * formatted at all.
+     *
+     * The decision is taken here, while the operands are alive.
+     */
+    template <class Expr_T>
+    void
+    check_result::init (const Expr_T& expr, check_kind kind,
+                        const reflection::source_location& location,
+                        test_case& test_case, expression_formatter& expression,
+                        bool writes_passed)
+    {
+      start (static_cast<bool> (expr), kind, extension::is_op<Expr_T>,
+             location, test_case, writes_passed);
+
+#if defined(MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED)
+      trace::printf ("%s\n", __PRETTY_FUNCTION__);
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_TRACE_CONSTRUCTORS_ENABLED
+
+      // The same address is used by the destructor, to retrieve the text,
+      // even if other checks used the formatter in the meantime.
+      expression.begin_check (this);
+
+      if (is_written_)
+        {
+          if constexpr (extension::is_op<Expr_T>
+                        or std::convertible_to<Expr_T, bool>)
+            {
+              expression << expr;
+            }
+          else
+            {
+              expression << static_cast<bool> (expr);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @details
+     * Returns the result value stored in `value_`.
+     */
+    inline bool
+    check_result::value (void) const&& noexcept
+    {
+      return value_;
+    }
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @details
+     * This operator overload enables the check result to accumulate
+     * expectation messages by appending the provided value to the internal
+     * message string.
+     *
+     * The value is written by the same `operator<<` overloads as the
+     * operands of the expressions, so that both accept the same types,
+     * including the application types with an `operator<<` for the
+     * formatter. The message is moved into a local formatter in the plain
+     * mode, which writes the numbers without the type suffixes, and the
+     * strings and the `char` values without quotes, with only the control
+     * characters that can change the state of a terminal escaped, and is
+     * moved back after the value is
+     * appended, so that no other buffer is allocated. The formatter of the
+     * reporter is not used, since it may hold the expression of this
+     * check, or of a pending one.
+     *
+     * When the outcome of the check is not written, the message is not
+     * needed, and the value is not formatted.
+     *
+     * A callable object (see `detail::lazy_message`) is called only if the
+     * check failed, and its result is appended as a value; after a
+     * success, even if the outcome is written, it appends nothing, since
+     * its purpose is to describe a failure with values that may not be
+     * valid otherwise, like the error of a `std::expected` that holds a
+     * value. Being a class type, a lambda without captures is called
+     * too, although it is also printable, as a `bool`.
+     */
+    template <class T>
+      requires detail::message_argument<T>
+    check_result&&
+    check_result::operator<< (const T& msg) &&
+    {
+      if constexpr (detail::lazy_message<T>)
+        {
+          if (value_)
+            {
+              return std::move (*this);
+            }
+        }
+      else
+        {
+          if (!is_written_)
+            {
+              return std::move (*this);
+            }
+        }
+
+      expression_formatter formatter{ std::move (info_.message) };
+      if constexpr (detail::lazy_message<T>)
+        {
+          formatter << std::invoke (msg);
+        }
+      else
+        {
+          formatter << msg;
+        }
+      info_.message = std::move (formatter.buffer_);
+      return std::move (*this);
+    }
+
+#if !defined(__DOXYGEN__)
+    /**
+     * @details
+     * Never called; the compilation stops here, with a message that
+     * states what a message argument is.
+     */
+    template <class T>
+      requires (not detail::message_argument<T>)
+    check_result&&
+    check_result::operator<< ([[maybe_unused]] const T& msg) &&
+    {
+      if constexpr (std::is_class_v<T> and std::invocable<const T&>)
+        {
+          static_assert (
+              not std::is_same_v<T, T>,
+              "a message that is a callable object must be callable "
+              "without arguments and return a value that can be "
+              "written, not void");
+        }
+      else
+        {
+          static_assert (not std::is_same_v<T, T>,
+                         "a message argument must be a value that can be "
+                         "written: define an operator<< (mt::"
+                         "expression_formatter&, const T&) in the namespace "
+                         "of the type, or pass a callable object that returns "
+                         "such a value");
+        }
+      return std::move (*this);
+    }
+#endif // !defined(__DOXYGEN__)
+
+    // ------------------------------------------------------------------------
+  } // namespace detail
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_CHECK_RESULT_INLINES_H_
+
+// ----------------------------------------------------------------------------

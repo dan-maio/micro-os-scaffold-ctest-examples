@@ -1,0 +1,12 @@
+# Tests added by hand to this workspace. micro-os-scaffold never writes this
+# file: a re-scaffold keeps what it lists, and ./run.sh runs the tests by
+# default. See README.md, "Local tests".
+#
+#   <test-folder>       micro-os-plus-iii/tests/platforms/<platform>/tests/<name>/
+#   keep <path>         a file or folder (relative to the workspace) kept as it is
+
+# USB gadget + SD card, written on the standard C++ library (stdc++).
+usb-sd-stdcpp
+
+# JTAG at 10000 kHz with the Raspberry Pi JTAG probe (the source has 15000).
+keep micro-os-plus-iii/tests/platforms/aarch32-rpi-zero-2w/bcm2837-aarch32.cfg
