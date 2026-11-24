@@ -1,433 +1,199 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-11-15T08:39:27.667Z",
+  "schemaVersion": 2,
+  "layout": "v2",
+  "generatedAt": "2026-11-24T06:02:52.104Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
-    "node": "v24.22.2",
     "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
   },
   "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
-  "sourceUrl": null,
-  "sourceBranch": null,
+  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp",
+  "kernel": {
+    "dir": "micro-os-plus-iii",
+    "version": "7.2.0-pre.1",
+    "commit": "b9887856"
+  },
+  "packages": [
+    {
+      "id": "micro-os-plus-iii-cortexm",
+      "dir": "cortexm/micro-os-plus-iii-cortexm",
+      "version": "2.0.0-pre.1",
+      "commit": "a59271c"
+    },
+    {
+      "id": "micro-os-plus-iii-devices-rp2xxx",
+      "dir": "cortexm/micro-os-plus-iii-devices-rp2xxx",
+      "version": "0.1.0-pre.1",
+      "commit": "9e51139"
+    }
+  ],
+  "selection": [
+    {
+      "platform": "cortexm-pico2",
+      "apps": [
+        "smp-test4"
+      ],
+      "all": false,
+      "tests": [
+        {
+          "app": "smp-test4",
+          "kind": "board",
+          "selectionId": "10.16"
+        },
+        {
+          "app": "mtp-example",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-args",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-smp",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-stdcpp",
+          "kind": "stdcpp",
+          "selectionId": null
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "cortexm-pico2-cmake-gcc-debug",
+      "platform": "cortexm-pico2",
+      "buildType": "Debug",
+      "toolchainFileName": "arm-none-eabi-gcc.cmake"
+    }
+  ],
+  "pruned": [
+    "tests/platforms/cortexm-pico2/tests/clock-test",
+    "tests/platforms/cortexm-pico2/tests/cmsis-os-validator-ram",
+    "tests/platforms/cortexm-pico2/tests/exc-test",
+    "tests/platforms/cortexm-pico2/tests/mutex-stress-ram",
+    "tests/platforms/cortexm-pico2/tests/rtos-apis-ram",
+    "tests/platforms/cortexm-pico2/tests/sc-test-ko",
+    "tests/platforms/cortexm-pico2/tests/smp-mat-test",
+    "tests/platforms/cortexm-pico2/tests/smp-mat-test-ram",
+    "tests/platforms/cortexm-pico2/tests/smp-test-ko",
+    "tests/platforms/cortexm-pico2/tests/smp-test-usb-cdc-acm",
+    "tests/platforms/cortexm-pico2/tests/smp-test-usb-hid",
+    "tests/platforms/cortexm-pico2/tests/smp-test0",
+    "tests/platforms/cortexm-pico2/tests/smp-test1",
+    "tests/platforms/cortexm-pico2/tests/smp-test2",
+    "tests/platforms/cortexm-pico2/tests/smp-test3",
+    "tests/platforms/cortexm-pico2/tests/smp-test5"
+  ],
+  "regenerateOptions": [
+    "--micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "--micro-test-plus-ref v6.0.0",
+    "--stdcpp"
+  ],
   "microTestPlus": {
     "spec": "https://github.com/micro-os-plus/micro-test-plus-xpack.git",
     "ref": "v6.0.0",
     "kind": "git",
     "name": "@micro-os-plus/micro-test-plus",
     "version": "6.0.0",
-    "commit": null,
+    "commit": "ffceb78",
     "destination": "third_party/micro-test-plus",
+    "support": "micro-os-plus-iii/tests/mtp",
     "force": false,
-    "boards": [
+    "platforms": [
       {
-        "project": "micro-os-plus-iii-cortexm",
         "platform": "cortexm-pico2",
-        "board": "pico2",
         "status": "integrated",
         "runtime": [
           {
             "rule": "linker script: .init_array kept, with __init_array_start/__init_array_end",
             "ok": true,
-            "evidence": "micro-os-plus-iii-cortexm/test/boards/pico2/linker.ld"
+            "evidence": "micro-os-plus-iii/tests/platforms/cortexm-pico2/device/linker-scripts/linker.ld"
           },
           {
             "rule": "linker script: heap region _Heap_Begin .. _Heap_Limit",
             "ok": true,
-            "evidence": "micro-os-plus-iii-cortexm/test/boards/pico2/linker.ld"
+            "evidence": "micro-os-plus-iii/tests/platforms/cortexm-pico2/device/linker-scripts/linker.ld"
           },
           {
             "rule": "boot code runs the static constructors",
             "ok": true,
-            "evidence": "micro-os-plus-iii-cortexm/test/boards/pico2/src/boot.S"
+            "evidence": "micro-os-plus-iii/tests/platforms/cortexm-pico2/src/boot.S"
           },
           {
             "rule": "the heap is given to the µOS++ free store (malloc) at start-up",
             "ok": true,
-            "evidence": "micro-os-plus-iii-cortexm/test/boards/pico2/glue/rtos-glue.cpp"
+            "evidence": "micro-os-plus-iii/tests/platforms/cortexm-pico2/glue/rtos-glue.cpp"
           },
           {
             "rule": "sbrk () over _Heap_Begin .. _Heap_Limit",
             "ok": true,
-            "evidence": "micro-os-plus-iii-smp/src/libc/_sbrk.c"
+            "evidence": "micro-os-plus-iii/src/libc/_sbrk.c"
           }
         ],
         "console": {
           "model": 2,
-          "why": "uart::write (s, n), hw_result::semi_write0, and a weak _write in boards/shared/syscalls.c"
+          "why": "uart::write (s, n), hw_result::semi_write0, a weak _write in board-tests/cortexm/syscalls.c"
         },
-        "example": "micro-os-plus-iii-cortexm/test/pico2/mtp-example",
-        "support": "micro-os-plus-iii-cortexm/test/mtp",
+        "qemuPatched": true,
+        "smpBoot": 2,
+        "hwdOnly": true,
         "starters": [
           "mtp-example",
           "mtp-args",
           "mtp-smp"
         ],
-        "ctest": [
-          "cortexm-pico2-mtp-example-hwd",
-          "cortexm-pico2-mtp-args-hwd",
-          "cortexm-pico2-mtp-smp-hwd",
-          "cortexm-pico2-smp-stdcpp-test-qemu",
-          "cortexm-pico2-smp-stdcpp-test-hwd"
-        ],
-        "smpBoot": 2
+        "tests": "micro-os-plus-iii/tests/platforms/cortexm-pico2/tests"
       }
     ],
-    "patches": [
-      "micro-os-plus-iii-smp/test_smpl/run-qemu.sh: µTest++ command line and report file",
-      "micro-os-plus-iii-smp/test_smpl/run-host.sh: µTest++ command line and report file",
-      "micro-os-plus-iii-smp/test_smpl/run-hw.sh: µTest++ command line and report file",
-      "test/boards/pico2/hw.sh: arm semihosting_cmdline + report file",
-      "micro-os-plus-iii-cortexm/test/boards/pico2/src/boot.S: semihosting SYS_GET_CMDLINE before main ()",
-      "micro-os-plus-iii-cortexm/test/boards/pico2/src/init-fini-stubs.c: weak os_startup_initialize_args () default",
-      "micro-os-plus-iii-cortexm/test/mtp/mtp_board.cpp: single-core emulated image fallback (no SIO, no 00 - Cores)",
-      "tests/platforms/cortexm-pico2/CMakeLists.txt: qemu semihosting args + report file",
-      "tests/device-qemu-cortexm + test/boards/pico2/qemu: restored for the qemu variant"
+    "registration": [
+      "uos_tests_add_qemu",
+      "uos_tests_add_host",
+      "uos_tests_add_hwd",
+      "uos_tests_add_openocd"
     ]
   },
-  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp",
-  "mode": "lean",
-  "minimal": true,
-  "lean": true,
-  "kernel": {
-    "id": "micro-os-plus-iii",
-    "scaffoldName": "micro-os-plus-iii-smp",
-    "version": "7.1.0",
-    "role": "kernel",
-    "buildSystem": "cmake",
-    "architecture": "portable",
-    "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp/micro-os-plus-iii-smp"
-  },
-  "projects": [
-    {
-      "id": "micro-os-plus-iii",
-      "index": 1,
-      "role": "kernel",
-      "scaffoldName": "micro-os-plus-iii-smp",
-      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp/micro-os-plus-iii-smp",
-      "buildSystem": "cmake",
-      "architecture": "portable",
-      "version": "7.1.0",
-      "tools": [
-        "cmake",
-        "git",
-        "ninja",
-        "python3"
-      ],
-      "platforms": [],
-      "boards": []
-    },
-    {
-      "id": "micro-os-plus-iii-cortexm",
-      "index": 4,
-      "role": "port",
-      "scaffoldName": "micro-os-plus-iii-cortexm",
-      "destinationPath": "/home/dan/Work/micro-os-scaffold-ctest-examples/pico2-smp-stdcpp/micro-os-plus-iii-cortexm",
-      "buildSystem": "cmake",
-      "architecture": "cortexm",
-      "version": "1.1.0",
-      "tools": [
-        "arm-none-eabi-g++",
-        "arm-none-eabi-gcc",
-        "arm-none-eabi-gdb",
-        "cmake",
-        "git",
-        "ninja",
-        "openocd",
-        "python3",
-        "qemu-system-arm"
-      ],
-      "platforms": [
-        {
-          "id": "cortexm-pico2",
-          "board": "pico2",
-          "project": "micro-os-plus-iii-cortexm",
-          "selectionId": "4.4",
-          "platformIndex": 4,
-          "qemu": [
-            "qemu-system-arm"
-          ],
-          "hasHardwareTests": true,
-          "tests": [
-            {
-              "app": "smp-test4",
-              "target": "smp-test4",
-              "kind": "board-test",
-              "path": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/pico2/smp-test4",
-              "ctestPattern": "^cortexm-pico2-smp-test4-hwd$",
-              "testIndex": 20,
-              "selectionId": "4.4.20"
-            }
-          ]
-        }
-      ],
-      "boards": [
-        {
-          "id": "pico2",
-          "hardwareRunner": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/boards/pico2/hw.sh",
-          "openocdConfig": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github/micro-os-plus-iii-cortexm/test/boards/pico2/openocd.cfg",
-          "adapter": "cmsis-dap",
-          "transport": null,
-          "vidPid": null,
-          "gdbServer": "disabled",
-          "preTestScript": null,
-          "tests": []
-        }
-      ]
-    }
-  ],
-  "selectedProjects": [
-    "micro-os-plus-iii-cortexm"
-  ],
-  "selectedSelections": [
-    "4.4.20"
-  ],
-  "selectedPlatforms": [
-    "cortexm-pico2"
-  ],
-  "selectedTests": [
-    {
-      "selectionId": "4.4.20",
-      "project": "micro-os-plus-iii-cortexm",
-      "platform": "cortexm-pico2",
-      "board": "pico2",
-      "app": "smp-test4",
-      "ctestPattern": "^cortexm-pico2-smp-test4-hwd$",
-      "kind": "board-test"
-    },
-    {
-      "selectionId": null,
-      "project": "micro-os-plus-iii-cortexm",
-      "platform": "cortexm-pico2",
-      "board": "pico2",
-      "app": "mtp-example",
-      "ctestPattern": "^cortexm-pico2-mtp-example-hwd$",
-      "kind": "micro-test-plus"
-    },
-    {
-      "selectionId": null,
-      "project": "micro-os-plus-iii-cortexm",
-      "platform": "cortexm-pico2",
-      "board": "pico2",
-      "app": "mtp-args",
-      "ctestPattern": "^cortexm-pico2-mtp-args-hwd$",
-      "kind": "micro-test-plus"
-    },
-    {
-      "selectionId": null,
-      "project": "micro-os-plus-iii-cortexm",
-      "platform": "cortexm-pico2",
-      "board": "pico2",
-      "app": "mtp-smp",
-      "ctestPattern": "^cortexm-pico2-mtp-smp-hwd$",
-      "kind": "micro-test-plus"
-    }
-  ],
-  "tools": {
-    "arm-none-eabi-g++": {
-      "key": "arm-none-eabi-g++",
-      "kind": "compiler",
-      "language": "C++",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-g++",
-      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
-      "version": "15.2.1",
-      "rawVersion": "arm-none-eabi-g++ (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203",
-      "origin": "PATH"
-    },
-    "arm-none-eabi-gcc": {
-      "key": "arm-none-eabi-gcc",
-      "kind": "compiler",
-      "language": "C",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-gcc",
-      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
-      "version": "15.2.1",
-      "rawVersion": "arm-none-eabi-gcc (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203",
-      "origin": "PATH"
-    },
-    "arm-none-eabi-gdb": {
-      "key": "arm-none-eabi-gdb",
-      "kind": "debugger",
-      "language": null,
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin/arm-none-eabi-gdb",
-      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/arm-none-eabi-gcc/15.2.1-1.1.1/.content/bin",
-      "version": "16.3.90",
-      "rawVersion": "GNU gdb (xPack GNU Arm Embedded GCC x86_64) 16.3.90.20250906-git",
-      "origin": "PATH"
-    },
-    "cmake": {
-      "key": "cmake",
-      "kind": "build",
-      "language": null,
-      "found": true,
-      "path": "/usr/bin/cmake",
-      "binDir": "/usr/bin",
-      "version": "4.4.4",
-      "rawVersion": "cmake version 4.4.4",
-      "origin": "PATH",
-      "previousPaths": [
-        "/home/dan/.local/xPacks/@xpack-dev-tools/cmake/3.26.5-1.1/.content/bin/cmake",
-        "/usr/share/cmake"
-      ],
-      "reconciled": true
-    },
-    "git": {
-      "key": "git",
-      "kind": "vcs",
-      "language": null,
-      "found": true,
-      "path": "/usr/bin/git",
-      "binDir": "/usr/bin",
-      "version": "2.56.0",
-      "rawVersion": "git version 2.56.0",
-      "origin": "PATH"
-    },
-    "ninja": {
-      "key": "ninja",
-      "kind": "build",
-      "language": null,
-      "found": true,
-      "path": "/usr/bin/ninja",
-      "binDir": "/usr/bin",
-      "version": "1.13.2",
-      "rawVersion": "1.13.2",
-      "origin": "PATH",
-      "previousPaths": [
-        "/home/dan/.local/xPacks/@xpack-dev-tools/ninja-build/1.11.1-3.1/.content/bin/ninja"
-      ],
-      "reconciled": true
-    },
-    "openocd": {
-      "key": "openocd",
-      "kind": "debug-probe",
-      "language": null,
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin/openocd",
-      "binDir": "/home/dan/.local/xPacks/@xpack-dev-tools/openocd/0.12.0-7.1/.content/bin",
-      "version": "0.12.0+dev-02228-ge5888bda3-dirty",
-      "rawVersion": "xPack Open On-Chip Debugger 0.12.0+dev-02228-ge5888bda3-dirty (2025-10-04-22:42)",
-      "origin": "xPacks"
-    },
-    "python3": {
-      "key": "python3",
-      "kind": "scripting",
-      "language": null,
-      "found": true,
-      "path": "/usr/bin/python3",
-      "binDir": "/usr/bin",
-      "version": "3.14.7",
-      "rawVersion": "Python 3.14.7",
-      "origin": "PATH"
-    }
-  },
-  "libraries": {
-    "build-helper": {
-      "key": "build-helper",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@micro-os-plus/build-helper/2.17.0",
-      "version": "2.17.0",
-      "origin": "xPacks"
-    },
-    "arm-cmsis": {
-      "key": "arm-cmsis",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis/4.5.0-7",
-      "version": "4.5.0-7",
-      "origin": "xPacks"
-    },
-    "arm-cmsis-rtos-validator": {
-      "key": "arm-cmsis-rtos-validator",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpacks/arm-cmsis-rtos-validator/1.0.0-4",
-      "version": "1.0.0-4",
-      "origin": "xPacks"
-    },
-    "chan-fatfs": {
-      "key": "chan-fatfs",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpacks/chan-fatfs/0.13.1-5",
-      "version": "0.13.1-5",
-      "origin": "xPacks"
-    },
-    "libucontext": {
-      "key": "libucontext",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/libucontext/1.2.0-5",
-      "version": "1.2.0-5",
-      "origin": "xPacks"
-    },
-    "arm-cmsis-core": {
-      "key": "arm-cmsis-core",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/arm-cmsis-core/5.4.0-6",
-      "version": "5.4.0-6",
-      "origin": "xPacks"
-    },
-    "raspberrypi-pico-sdk": {
-      "key": "raspberrypi-pico-sdk",
-      "kind": "library",
-      "found": true,
-      "path": "/home/dan/.local/xPacks/@xpack-3rd-party/raspberrypi-pico-sdk/1.5.1-1",
-      "version": "1.5.1-1",
-      "origin": "xPacks"
-    }
-  },
-  "build": {
-    "configurations": [
+  "stdcpp": {
+    "spec": "bundled",
+    "kind": "bundled",
+    "ref": null,
+    "destination": "third_party/stateos-stdc++",
+    "platforms": [
       {
-        "name": "cortexm-pico2-cmake-gcc-debug",
-        "project": "micro-os-plus-iii-cortexm",
         "platform": "cortexm-pico2",
-        "buildType": "Debug",
-        "toolchain": "arm-none-eabi-gcc",
-        "toolchainFile": "xpacks/@micro-os-plus/build-helper/cmake/toolchains/arm-none-eabi-gcc.cmake",
-        "available": [
-          "cortexm-pico2-cmake-gcc-debug",
-          "cortexm-pico2-cmake-gcc-release"
-        ],
-        "selectionIds": [
-          "4.4.20"
-        ],
-        "tests": [
-          {
-            "app": "smp-test4",
-            "selectionId": "4.4.20",
-            "ctestPattern": "^cortexm-pico2-smp-test4-hwd$",
-            "kind": "board-test"
-          },
-          {
-            "app": "mtp-example",
-            "selectionId": null,
-            "ctestPattern": "^cortexm-pico2-mtp-example-hwd$",
-            "kind": "micro-test-plus"
-          },
-          {
-            "app": "mtp-args",
-            "selectionId": null,
-            "ctestPattern": "^cortexm-pico2-mtp-args-hwd$",
-            "kind": "micro-test-plus"
-          },
-          {
-            "app": "mtp-smp",
-            "selectionId": null,
-            "ctestPattern": "^cortexm-pico2-mtp-smp-hwd$",
-            "kind": "micro-test-plus"
-          }
-        ],
-        "result": null
+        "status": "integrated",
+        "starter": "micro-os-plus-iii/tests/platforms/cortexm-pico2/tests/mtp-stdcpp"
+      }
+    ]
+  },
+  "localTests": {
+    "file": "scripts/local-tests.txt",
+    "tests": [
+      {
+        "name": "smp-stdcpp-test",
+        "platform": null,
+        "paths": [
+          "micro-os-plus-iii/tests/platforms/cortexm-pico2/tests/smp-stdcpp-test"
+        ]
       }
     ],
-    "results": [],
-    "status": "pending",
-    "complete": false,
-    "verifiedAt": null
+    "keep": [],
+    "hookFiles": [
+      "micro-os-plus-iii/tests/platforms/cortexm-pico2/tests/tests.local.cmake"
+    ]
+  },
+  "build": {
+    "results": [
+      {
+        "name": "cortexm-pico2-cmake-gcc-debug",
+        "status": "pass",
+        "log": "build-logs/cortexm-pico2-cmake-gcc-debug.build.log"
+      }
+    ]
   }
 }

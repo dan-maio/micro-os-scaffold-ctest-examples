@@ -11,3 +11,6 @@
 .DS_Store
 *.swp
 *~
+
+# micro-os-scaffold: an interrupted run's stash of the local tests.
+.scaffold-local-stash/

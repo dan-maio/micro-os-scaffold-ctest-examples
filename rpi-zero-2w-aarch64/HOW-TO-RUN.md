@@ -1,13 +1,12 @@
 # Raspberry Pi Zero 2 W (AArch64) — all CTest cases
 
-For the full explanation of this board's folders, startup path, µTest++ support
-and CTest flow, read [ARCHITECTURE.md](ARCHITECTURE.md) (or
-[ARCHITECTURE.pdf](ARCHITECTURE.pdf)).
-
-For the **general** explanation of the test harness — how `tests/` is
-organised, how a test becomes a CTest case, and how the runners work on any
-board — read [tests/ARCHITECTURE.md](tests/ARCHITECTURE.md) (or
-[tests/ARCHITECTURE.pdf](tests/ARCHITECTURE.pdf)).
+Re-scaffolded on 2026-11-24 from the restructured source: the platform is
+`micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/`, the entry point is
+`./run.sh` at this folder's root. [ARCHITECTURE.md](ARCHITECTURE.md)
+([ARCHITECTURE.pdf](ARCHITECTURE.pdf)) explains this board's startup path,
+µTest++ support and CTest flow; its first page maps its paths, written for
+the previous layout, to the new ones. The harness in general is the
+source's `micro-os-plus-iii/tests/` (its `README.md`).
 
 This workspace reproduces every CTest case of the earlier `--micro-test-plus`
 scaffold `micro-os-scaffold-workspace-aarch64-rpi-zero-2w-mtp` (since
@@ -35,8 +34,6 @@ runner's command line reaches `os_main` (`argc >= 3`, `argv[0]` is the test,
 ## Run
 
 ```bash
-cd tests
-
 ./run.sh list        # the eight cases (* = run by default)
 ./run.sh             # build + run the four QEMU cases
 ./run.sh --hwd       # include the four board cases (Zero 2 W attached)
@@ -48,7 +45,7 @@ cd tests
 
 ## Verified under QEMU
 
-The four QEMU cases pass:
+The four QEMU cases pass (2026-11-24):
 
 ```text
 aarch64-rpi-zero-2w-mtp-args-qemu       Passed
@@ -60,13 +57,13 @@ aarch64-rpi-zero-2w-smp-mat-test-qemu   Passed
 The µTest++ reports:
 
 ```text
-# Running: mtp-args    --output-file .../.qemu-logs/mtp-args.tap
-# Running: mtp-example --output-file .../.qemu-logs/mtp-example.tap
-# Running: mtp-smp     --output-file .../.qemu-logs/mtp-smp.tap
+# Running: mtp-args    --output-file .../mtp-reports/aarch64-rpi-zero-2w-mtp-args-qemu.tap
+# Running: mtp-example --output-file .../mtp-reports/aarch64-rpi-zero-2w-mtp-example-qemu.tap
+# Running: mtp-smp     --output-file .../mtp-reports/aarch64-rpi-zero-2w-mtp-smp-qemu.tap
 
 mtp-args:    10 checks passed, 2 test suites (00 Arguments + 00 Cores)
 mtp-example: 27 checks passed, 3 test suites
-mtp-smp:     78 checks passed, 10 test suites
+mtp-smp:     78 checks passed, 10 test suites (speed-up 3.62x on 4 cores)
 ```
 
 `mtp-example` suites (all auto-registered):
@@ -95,12 +92,12 @@ mtp-smp:     78 checks passed, 10 test suites
 ## Result files
 
 ```text
-tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/ctest.xml
-tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/ctest.log
-tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/platform-bin/port-tests/test/
-  .qemu-logs/mtp-args.tap
-  .qemu-logs/mtp-example.tap
-  .qemu-logs/mtp-smp.tap
+micro-os-plus-iii/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/ctest.xml
+micro-os-plus-iii/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/ctest.log
+micro-os-plus-iii/tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/mtp-reports/
+  aarch64-rpi-zero-2w-mtp-args-qemu.tap
+  aarch64-rpi-zero-2w-mtp-example-qemu.tap
+  aarch64-rpi-zero-2w-mtp-smp-qemu.tap
 ```
 
 `ctest.xml` is the JUnit summary (CTest caps its console snippet at 1 KiB);
@@ -114,14 +111,13 @@ tests/build/aarch64-rpi-zero-2w-cmake-gcc-debug/platform-bin/port-tests/test/
 | suites | listed in `main.cpp` with `tr.add_suite (...)` | each suite is a `mt::static_suite` in its own file |
 | command line | fixed `mtp_board::options ()` | `mtp_board::run (argc, argv)` parses the debugger command line |
 | report file | not requested | `--output-file <path>`, written through semihosting |
-| scripts | `build.sh`, `test.sh`, `selected-tests.txt` | one `tests/run.sh` |
+| scripts | `build.sh`, `test.sh`, `selected-tests.txt` | one `./run.sh` |
 | CTest cases | 6 | 8 (mtp-args, mtp-example, mtp-smp, smp-mat-test, qemu + hwd) |
 
 ## Moving or renaming this workspace
 
-`tests/run.sh` and `tests/scripts/env.sh` derive the root from their own
-location, so this folder can be renamed. A build tree moved with it is
-detected from its `CMakeCache.txt` (`CMAKE_CACHEFILE_DIR` and
-`CMAKE_HOME_DIRECTORY`) and rebuilt automatically; no manual `clean` is
-needed. The tool paths in `tests/scripts/env.sh` remain absolute: on another
-machine, re-scaffold or override them with `UOS_TOOL_<NAME>`.
+`run.sh` derives the root from its own location, and the package links in
+the build tree are relative, so this folder can be renamed or moved. A build
+tree moved with it is detected from its `CMakeCache.txt` and reconfigured
+automatically. The tool and library paths in `scripts/env.sh` are absolute:
+on another machine, re-scaffold or override them in the environment.

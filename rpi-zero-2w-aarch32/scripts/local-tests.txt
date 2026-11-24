@@ -1,0 +1,8 @@
+# Tests and files added by hand to this workspace. micro-os-scaffold never
+# writes this file: a re-scaffold keeps what it lists. See README.md.
+#
+#   <test-folder>       micro-os-plus-iii/tests/platforms/<platform>/tests/<name>/
+#   keep <path>         a file or folder (relative to the workspace) kept as it is
+
+# JTAG at 10000 kHz with the Raspberry Pi JTAG probe (the source has 15000).
+keep micro-os-plus-iii/tests/platforms/aarch32-rpi-zero-2w/bcm2837-aarch32.cfg

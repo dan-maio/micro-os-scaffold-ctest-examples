@@ -3,7 +3,7 @@
 <p class="subtitle">A detailed guide to the StateOS stdc++ package, its port to µOS++ III SMP, and its use in a µTest++ test and a CTest case — from the GCC gthread contract to the Raspberry Pi 4 B hardware run</p>
 
 **Library:** `third_party/stateos-stdc++/`<br>
-**Test:** `rpi4b-smp/micro-os-plus-iii-aarch64/test/rpi4b/smp_test4/`<br>
+**Test:** `rpi4b-smp/micro-os-plus-iii/tests/platforms/aarch64-rpi4b/tests/smp_test4/` (a local test; previously `micro-os-plus-iii-aarch64/test/rpi4b/smp_test4/`)<br>
 **Workspace:** `rpi4b-smp/`<br>
 **Target:** Raspberry Pi 4 B, BCM2711, 4 × Cortex-A72, AArch64, µOS++ III SMP<br>
 **Toolchain:** `aarch64-none-elf-gcc` 15.2.1, C++20, `-fno-exceptions -fno-rtti`
@@ -15,6 +15,29 @@ This document answers three questions, in this order:
 3. **How is it used in a test and in CTest?** — the CMake target, a µTest++ test, the QEMU and hardware CTest cases, what a passing run looks like, and how to start a new project from scratch with `micro-os-scaffold`.
 
 It is written for someone who has to maintain this port, adapt it to another board, or write a new test with it. It is not a libstdc++ tutorial; it explains only the parts the port touches.
+
+> **Read this first: the workspace layout changed on 2026-11-24.** This guide was
+> written for the previous layout. The workspace was then re-scaffolded from the
+> restructured source, and the tests, the startup code, the µTest++ support and
+> the results are the same. The paths and the runners moved:
+>
+> | In this guide | In the re-scaffolded workspace |
+> | --- | --- |
+> | `tests/run.sh`, `cd tests` | `./run.sh` at the workspace root |
+> | `tests/scripts/env.sh` | `scripts/env.sh` |
+> | `tests/build/<configuration>/` | `micro-os-plus-iii/tests/build/<configuration>/` |
+> | `.../.qemu-logs/<test>.tap`, `.../.hw-logs/<test>.tap` | `micro-os-plus-iii/tests/build/<configuration>/mtp-reports/<platform>-<test>-qemu.tap` (or `-hwd.tap`) |
+> | `micro-os-plus-iii-smp/` (the kernel) | `micro-os-plus-iii/` |
+> | `micro-os-plus-iii-<arch>/` (the port) | `<arch>/micro-os-plus-iii-<arch>/` |
+> | `micro-os-plus-iii-<arch>/test/<board>/<test>/`, `.../tests.cmake` | `micro-os-plus-iii/tests/platforms/<platform>/tests/<test>/`, `.../tests/tests.cmake` (for example `micro-os-plus-iii/tests/platforms/aarch64-rpi4b/tests/smp_test4/`) |
+> | `micro-os-plus-iii-<arch>/test/boards/<board>/` (board code, `linker.ld`, `hw.sh`) | `micro-os-plus-iii/tests/platforms/<platform>/` (`src/`, `include/`, `device/linker-scripts/linker.ld`, `openocd*.cfg`) |
+> | `micro-os-plus-iii-<arch>/test/CMakeLists.txt` (the port's test builder) | `micro-os-plus-iii/tests/board-tests/CMakeLists.txt` (one builder, the same hooks) |
+> | `micro-os-plus-iii-<arch>/test/mtp/` | `micro-os-plus-iii/tests/mtp/` |
+> | `test_smpl/run-qemu.sh`, `run-hw.sh`, the board's `hw.sh` | CTest runs QEMU and OpenOCD itself: `micro-os-plus-iii/tests/cmake/uos-tests-run.cmake` and `uos-hwd.tcl`; the µTest++ command line is added there (marked `SCAFFOLD µTest++`) |
+>
+> The chapters on the runner scripts describe the old shell runners. The steps are
+> the same (halt, enable semihosting, load, resume, read `RESULT:`), but CTest now
+> issues them as OpenOCD commands.
 
 ---
 

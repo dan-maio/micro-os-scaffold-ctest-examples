@@ -1,0 +1,37 @@
+# Build trees
+# build*/ , not build/ + build-*/ : a directory named build15 or
+# buildgcc14 slipped through the narrower pair and got committed once.
+build*/
+test/build*/
+cmake-build*/
+test/build*/
+output/
+target/
+
+# Objects and images
+*.o
+*.obj
+*.d
+*.a
+*.elf
+*.hex
+*.bin
+*.lst
+*.map
+*.su
+
+# Host tools built next to their sources (the USB HID tests' host/Makefile)
+test/*/smp-test-usb-hid/host/kbd_forward
+
+# Test-run scratch
+.hw-run*
+.hw-jlink-run*
+.qemu-verify/
+**/disk*.img
+
+# Editors / OS
+*.swp
+*~
+.vscode/
+.idea/
+.DS_Store

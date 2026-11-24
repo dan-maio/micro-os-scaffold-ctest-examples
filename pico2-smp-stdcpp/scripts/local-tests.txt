@@ -1,0 +1,8 @@
+# Tests added by hand to this workspace. micro-os-scaffold never writes this
+# file: a re-scaffold keeps what it lists, and ./run.sh runs the tests by
+# default. See README.md, "Local tests".
+#
+#   <test-folder>       micro-os-plus-iii/tests/platforms/<platform>/tests/<name>/
+#   keep <path>         a file or folder (relative to the workspace) kept as it is
+
+smp-stdcpp-test

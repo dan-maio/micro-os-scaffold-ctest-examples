@@ -12,6 +12,29 @@ what actually happens from the moment the image starts until CTest records a
 pass or a fail. It is written for someone who wants to understand or change
 the workspace, not for someone looking for a one-line command.
 
+> **Read this first: the workspace layout changed on 2026-11-24.** This guide was
+> written for the previous layout. The workspace was then re-scaffolded from the
+> restructured source, and the tests, the startup code, the µTest++ support and
+> the results are the same. The paths and the runners moved:
+>
+> | In this guide | In the re-scaffolded workspace |
+> | --- | --- |
+> | `tests/run.sh`, `cd tests` | `./run.sh` at the workspace root |
+> | `tests/scripts/env.sh` | `scripts/env.sh` |
+> | `tests/build/<configuration>/` | `micro-os-plus-iii/tests/build/<configuration>/` |
+> | `.../.qemu-logs/<test>.tap`, `.../.hw-logs/<test>.tap` | `micro-os-plus-iii/tests/build/<configuration>/mtp-reports/<platform>-<test>-qemu.tap` (or `-hwd.tap`) |
+> | `micro-os-plus-iii-smp/` (the kernel) | `micro-os-plus-iii/` |
+> | `micro-os-plus-iii-<arch>/` (the port) | `<arch>/micro-os-plus-iii-<arch>/` |
+> | `micro-os-plus-iii-<arch>/test/<board>/<test>/`, `.../tests.cmake` | `micro-os-plus-iii/tests/platforms/<platform>/tests/<test>/`, `.../tests/tests.cmake` (for example `micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/mtp-smp/`) |
+> | `micro-os-plus-iii-<arch>/test/boards/<board>/` (board code, `linker.ld`, `hw.sh`) | `micro-os-plus-iii/tests/platforms/<platform>/` (`src/`, `include/`, `device/linker-scripts/linker.ld`, `openocd*.cfg`) |
+> | `micro-os-plus-iii-<arch>/test/CMakeLists.txt` (the port's test builder) | `micro-os-plus-iii/tests/board-tests/CMakeLists.txt` (one builder, the same hooks) |
+> | `micro-os-plus-iii-<arch>/test/mtp/` | `micro-os-plus-iii/tests/mtp/` |
+> | `test_smpl/run-qemu.sh`, `run-hw.sh`, the board's `hw.sh` | CTest runs QEMU and OpenOCD itself: `micro-os-plus-iii/tests/cmake/uos-tests-run.cmake` and `uos-hwd.tcl`; the µTest++ command line is added there (marked `SCAFFOLD µTest++`) |
+>
+> The chapters on the runner scripts describe the old shell runners. The steps are
+> the same (halt, enable semihosting, load, resume, read `RESULT:`), but CTest now
+> issues them as OpenOCD commands.
+
 ## Contents
 
 1. The one-paragraph version
