@@ -1,0 +1,5 @@
+// <barrier>: the µOS++ III implementation, found before the toolchain's own.
+#ifndef __STATEOS_STDCXX_BARRIER_WRAPPER
+#define __STATEOS_STDCXX_BARRIER_WRAPPER
+#include "inc/barrier.hh"
+#endif

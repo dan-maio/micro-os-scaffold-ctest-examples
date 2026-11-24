@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 2,
+  "layout": "v2",
+  "generatedAt": "2026-11-24T11:33:16.468Z",
+  "generator": {
+    "name": "micro-os-scaffold",
+    "version": "1.0.0",
+    "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
+  },
+  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch64-usb-stdcpp",
+  "kernel": {
+    "dir": "micro-os-plus-iii",
+    "version": "7.2.0-pre.1",
+    "commit": "06d365fe"
+  },
+  "packages": [
+    {
+      "id": "micro-os-plus-iii-aarch64",
+      "dir": "aarch64/micro-os-plus-iii-aarch64",
+      "version": "0.1.0-pre.1",
+      "commit": "7141456"
+    },
+    {
+      "id": "micro-os-plus-iii-devices-bcm283x",
+      "dir": "common/micro-os-plus-iii-devices-bcm283x",
+      "version": "0.1.0-pre.1",
+      "commit": "eb8795f"
+    },
+    {
+      "id": "micro-os-plus-iii-devices-storage",
+      "dir": "common/micro-os-plus-iii-devices-storage",
+      "version": "0.1.0-pre.1",
+      "commit": "7c6cd98"
+    }
+  ],
+  "selection": [
+    {
+      "platform": "aarch64-rpi-zero-2w",
+      "apps": [
+        "usb_test",
+        "sd_test"
+      ],
+      "all": false,
+      "tests": [
+        {
+          "app": "usb_test",
+          "kind": "board",
+          "selectionId": "5.1"
+        },
+        {
+          "app": "sd_test",
+          "kind": "portable",
+          "selectionId": "5.13"
+        },
+        {
+          "app": "mtp-example",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-args",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-smp",
+          "kind": "micro-test-plus",
+          "selectionId": null
+        },
+        {
+          "app": "mtp-stdcpp",
+          "kind": "stdcpp",
+          "selectionId": null
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "aarch64-rpi-zero-2w-cmake-gcc-debug",
+      "platform": "aarch64-rpi-zero-2w",
+      "buildType": "Debug",
+      "toolchainFileName": "aarch64-none-elf-gcc.cmake"
+    }
+  ],
+  "pruned": [
+    "tests/platforms/aarch64-rpi-zero-2w/tests/wifi-net",
+    "tests/platforms/aarch64-rpi-zero-2w/tests/wifi-tcp-server"
+  ],
+  "regenerateOptions": [
+    "--micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "--micro-test-plus-ref v6.0.0",
+    "--stdcpp"
+  ],
+  "microTestPlus": {
+    "spec": "https://github.com/micro-os-plus/micro-test-plus-xpack.git",
+    "ref": "v6.0.0",
+    "kind": "git",
+    "name": "@micro-os-plus/micro-test-plus",
+    "version": "6.0.0",
+    "commit": "ffceb78",
+    "destination": "third_party/micro-test-plus",
+    "support": "micro-os-plus-iii/tests/mtp",
+    "force": false,
+    "platforms": [
+      {
+        "platform": "aarch64-rpi-zero-2w",
+        "status": "integrated",
+        "runtime": [
+          {
+            "rule": "linker script: .init_array kept, with __init_array_start/__init_array_end",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/device/linker-scripts/linker.ld"
+          },
+          {
+            "rule": "linker script: heap region _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/device/linker-scripts/linker.ld"
+          },
+          {
+            "rule": "boot code runs the static constructors",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/src/startup.S"
+          },
+          {
+            "rule": "the heap is given to the µOS++ free store (malloc) at start-up",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/src/platform-support.cpp"
+          },
+          {
+            "rule": "sbrk () over _Heap_Begin .. _Heap_Limit",
+            "ok": true,
+            "evidence": "micro-os-plus-iii/src/libc/_sbrk.c"
+          }
+        ],
+        "console": {
+          "model": 1,
+          "why": "uart.hpp has putc_uart and the port's semihosting.hpp has write_str"
+        },
+        "smpBoot": 1,
+        "hwdOnly": false,
+        "starters": [
+          "mtp-example",
+          "mtp-args",
+          "mtp-smp"
+        ],
+        "tests": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests"
+      }
+    ],
+    "registration": [
+      "uos_tests_add_qemu",
+      "uos_tests_add_host",
+      "uos_tests_add_hwd",
+      "uos_tests_add_openocd"
+    ]
+  },
+  "stdcpp": {
+    "spec": "bundled",
+    "kind": "bundled",
+    "ref": null,
+    "destination": "third_party/stateos-stdc++",
+    "platforms": [
+      {
+        "platform": "aarch64-rpi-zero-2w",
+        "status": "integrated",
+        "starter": "micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/mtp-stdcpp"
+      }
+    ]
+  },
+  "build": {
+    "results": [
+      {
+        "name": "aarch64-rpi-zero-2w-cmake-gcc-debug",
+        "status": "pass",
+        "log": "build-logs/aarch64-rpi-zero-2w-cmake-gcc-debug.build.log"
+      }
+    ]
+  }
+}

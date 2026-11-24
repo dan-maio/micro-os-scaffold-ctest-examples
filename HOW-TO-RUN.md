@@ -79,6 +79,29 @@ The workspaces:
   - The source gives each Lyra hardware case a 1200 s CTest timeout, which
     only matters when a test hangs.
 
+- `rpi-zero-2w-aarch64-usb-stdcpp/`: Raspberry Pi Zero 2 W, AArch64,
+  USB gadget + SD card.
+  - `usb_test`, `sd_test`, the µTest++ tests and `mtp-stdcpp` from the
+    source.
+  - The local test `usb-sd-stdcpp`: `usb_test`'s device, protocol and SD
+    storage, with the application written on the stdc++ package:
+    - `std::thread` for every thread;
+    - mutex/condition-variable channels;
+    - `std::promise`/`std::future` for the SD requests;
+    - `std::async` for the CRC;
+    - `std::chrono` for the timings;
+    - `std::atomic` for the core tally.
+  - The same host apps drive it (`host_xfer.py`, `send_file.py`, in its
+    folder).
+  - Under QEMU: 7/7 passed (the USB tests report SKIP, no device mode).
+  - On the board (2026-11-24): `host_xfer.py` with sizes 0 B to 64 KiB
+    passed PUT, GET, LIST and the CRCs. The board reported 19 commands,
+    no CRC error, 4 cores active, `RESULT: PASS`.
+  - 1 MiB transfers fail with the original `usb_test` too: the device
+    prints each stored file as a hexdump on the 115200-baud UART before
+    it replies, and the host waits only 120 s. The test's `README.md` has
+    the details.
+
 The hand-made tests are **local tests**. `scripts/local-tests.txt` lists
 them, and `micro-os-plus-iii/tests/platforms/<p>/tests/tests.local.cmake`
 holds their CMake wiring (they link `stateos-stdc++` and µTest++). A

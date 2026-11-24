@@ -1,0 +1,138 @@
+/*
+ * This file is part of the µOS++ project (https://micro-os-plus.github.io/).
+ * Copyright (c) 2021-2026 Liviu Ionescu. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose is hereby granted, under the terms of the MIT license.
+ *
+ * If a copy of the license was not distributed with this file, it can be
+ * obtained from https://opensource.org/licenses/mit.
+ *
+ * Major parts of the code are inspired from v1.1.8 of the Boost UT project,
+ * released under the terms of the Boost Version 1.0 Software License,
+ * which can be obtained from https://www.boost.org/LICENSE_1_0.txt.
+ */
+
+// ----------------------------------------------------------------------------
+
+/**
+ * @file
+ * @brief C++ header file with inline implementations for the µTest++
+ * exceptions comparators.
+ *
+ * @details
+ * This header provides the inline implementations for the exception-checking
+ * function templates used within the µTest++ framework (`throws()` and
+ * `nothrow()`), which create the `detail::throws_op` and `detail::nothrow_op`
+ * comparator objects.
+ *
+ * All definitions reside within the `micro_os_plus::micro_test_plus`
+ * namespace.
+ *
+ * This file is included by `exceptions.h`; the applications include
+ * `micro-os-plus/micro-test-plus.h`, not this file.
+ */
+
+#ifndef MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_EXCEPTIONS_INLINES_H_
+#define MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_EXCEPTIONS_INLINES_H_
+
+// ----------------------------------------------------------------------------
+
+#if defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Waggregate-return"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif // defined(__clang__)
+#endif // defined(__GNUC__)
+
+// ============================================================================
+
+namespace micro_os_plus::micro_test_plus
+{
+  // --------------------------------------------------------------------------
+  // Exceptions related comparators.
+
+#if defined(__cpp_exceptions)
+
+  /**
+   * @details
+   * The `throws` function template checks whether invoking the provided
+   * callable object results in the throwing of a specific exception type.
+   * This is useful for testing error handling in code under test.
+   * Exceptions of other types are reported as failures.
+   *
+   * The callable is invoked immediately, when the comparator is
+   * constructed; the result is reported when the comparator is passed to
+   * `expect()` or `require()`, which also accept optional messages.
+   */
+  template <class Exception_T, class Callable_T>
+    requires std::invocable<Callable_T&>
+  auto
+  throws (Callable_T&& func)
+  {
+    return detail::throws_op<Exception_T>{ func };
+  }
+
+  /**
+   * @details
+   * The `throws` function template checks whether invoking the provided
+   * callable object results in the throwing of any exception. This is
+   * useful for ensuring that code under test properly signals error
+   * conditions.
+   *
+   * The callable is invoked immediately, when the comparator is
+   * constructed; the result is reported when the comparator is passed to
+   * `expect()` or `require()`, which also accept optional messages.
+   */
+  template <class Callable_T>
+    requires std::invocable<Callable_T&>
+  auto
+  throws (Callable_T&& func)
+  {
+    return detail::throws_op<>{ func };
+  }
+
+  /**
+   * @details
+   * The `nothrow` function template checks whether invoking the provided
+   * callable object does not result in the throwing of any exception. This
+   * is useful for ensuring that code under test does not unexpectedly
+   * signal error conditions.
+   *
+   * The callable is invoked immediately, when the comparator is
+   * constructed; the result is reported when the comparator is passed to
+   * `expect()` or `require()`, which also accept optional messages.
+   */
+  template <class Callable_T>
+    requires std::invocable<Callable_T&>
+  auto
+  nothrow (Callable_T&& func)
+  {
+    return detail::nothrow_op{ func };
+  }
+
+#endif // defined(__cpp_exceptions)
+
+  // --------------------------------------------------------------------------
+} // namespace micro_os_plus::micro_test_plus
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
+// ----------------------------------------------------------------------------
+
+#endif // defined(__cplusplus)
+
+// ----------------------------------------------------------------------------
+
+#endif // MICRO_OS_PLUS_MICRO_TEST_PLUS_INLINES_EXCEPTIONS_INLINES_H_
+
+// ----------------------------------------------------------------------------
