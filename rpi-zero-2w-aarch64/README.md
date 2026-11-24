@@ -59,18 +59,33 @@ Probe selection: `PROBE=jlink|olimex|cmsis-dap` (AArch Pi boards),
 
 Results: `build/<configuration>/ctest.xml` (JUnit) and `ctest.log` (full output).
 
-## Adding to this workspace
+### Settings
+
+| Setting | How |
+| --- | --- |
+| extra CMake options | `UOS_CMAKE_ARGS='-D NAME=value' ./run.sh build` |
+| the probe | `PROBE=jlink\|olimex\|cmsis-dap` (AArch Pi boards); `UOS_HW_ADAPTER_SERIAL=<serial>` with several CMSIS-DAP probes |
+| the JTAG/SWD clock | `UOS_HW_ADAPTER_KHZ=<kHz>` |
+| tool and library paths | `scripts/env.sh` (generated; override in the environment) |
+
+## Adding code to this workspace
+
+`./run.sh` re-runs CMake each time, so a new folder or file is picked up without
+removing the build tree.
 
 | You add | Put it in | Picked up by |
 | --- | --- | --- |
-| a board test | `micro-os-plus-iii/tests/platforms/<platform>/tests/<name>/*.cpp` | the builder (`tests/board-tests/`) globs one test per folder |
-| a test's build settings | the hooks in `.../platforms/<platform>/tests/tests.cmake` (`board_test_defines`, `_sources`, `_includes`, `_libs`, ...) | the builder |
-| board code | `.../platforms/<platform>/src/`, `include/` | the platform library |
+| a test for this board | a folder `micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/tests/<name>/` with `.cpp` files (`os_main ()`; copy an existing test for the start-up) | the builder (`micro-os-plus-iii/tests/board-tests/`): one test per folder |
+| a µTest++ test | a folder `mtp-<name>/` there (copy `mtp-example/`); one `mt::static_suite` per file | the µTest++ block of `tests.cmake` |
+| a test's build settings | the hooks in `tests.cmake` there: `board_test_defines`, `_sources`, `_includes`, `_libs`, `_linker`, `_options`, `_ncpu`, `_qemu_libs`, `_qemu_sources`, `_qemu_includes`, `_sd_posix`; the lists `BOARD_TEST_HWD_ONLY`, `UOS_TESTS_STORAGE` (the SD card at `/sd/`) | the builder |
+| a test that survives a re-scaffold | its folder as above, its name in `scripts/local-tests.txt`, its settings in `tests.local.cmake` next to `tests.cmake` (`board_test_libs_local`, `board_test_defines_local`, ...) | the generated hooks ask the `_local` twins first |
+| any other file kept across re-scaffolds | `keep <path>` in `scripts/local-tests.txt` | the scaffolder sets it aside and puts it back |
+| board code | `micro-os-plus-iii/tests/platforms/aarch64-rpi-zero-2w/src/`, `include/`; the board facts in `cmake/board.cmake` | the platform library |
 | a shared test for several boards | `micro-os-plus-iii/tests/sources/<name>/`, named in the platform's `UOS_TESTS_SOURCES` | the builder |
+| kernel, port, device code | `micro-os-plus-iii/src/`, the port and device package folders | the CMake INTERFACE libraries |
 
-`./run.sh` re-runs CMake every time, so a new folder is noticed without removing the
-build tree. A re-scaffold rebuilds the workspace from the source: keep tests you want to
-last in the source repository.
+Code changed outside a local test or a `keep` path is replaced by the next re-scaffold:
+keep it in the source repository.
 
 ## µTest++ (`--micro-test-plus`)
 
