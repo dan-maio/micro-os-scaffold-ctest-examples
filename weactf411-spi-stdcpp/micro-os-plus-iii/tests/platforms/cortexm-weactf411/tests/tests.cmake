@@ -100,6 +100,9 @@ if (NOT TARGET uos-micro-test-plus)
   # The report file: µTest++ opens --output-file with fopen (); the wrapper
   # in mtp_board.cpp turns it into a semihosting stream.
   target_link_options (uos-micro-test-plus INTERFACE "-Wl,--wrap=fopen")
+  # A board whose reset code calls main (0, NULL) itself (RP2350 boot.S):
+  # __wrap_main in mtp_board.cpp reads the command line from the debugger.
+  target_link_options (uos-micro-test-plus INTERFACE "-Wl,--wrap=main")
   # newlib-nano: no "%zu"; the wrappers drop the 'z', _printf_float keeps "%g".
   target_link_options (uos-micro-test-plus INTERFACE
                        "-Wl,--wrap=printf,--wrap=vprintf,--wrap=fprintf"

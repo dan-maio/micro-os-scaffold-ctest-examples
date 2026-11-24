@@ -54,9 +54,29 @@ them by default, and `./run.sh list` marks them `L`.
 
 ## Board results
 
-These results come from the previous layout's workspaces, on the same boards
-and with the same test sources. The re-scaffolded workspaces have not yet run
-on the boards.
+Re-scaffolded workspaces, on the boards (2026-11-24):
+
+- **Pi 4 B** (`rpi4b-smp`, `./run.sh --hwd-only`, JTAG probe on Pico): 7/7
+  hardware cases passed, each after its reset fixture.
+  - `mtp-args` 10/10, `mtp-example` 27/27, `mtp-eth-net` 25/25.
+  - `mtp-smp` 78/78, speed-up 3.85x on 4 cores (717 ms on one core, 186 ms
+    on four).
+  - `mtp-stdcpp` 75/75, `smp_test4` (local) 75/75, `clock-test` passed.
+- **Pico 2** (`pico2-smp-stdcpp`, `UOS_HW_ADAPTER_SERIAL=E6633861A34C2E38
+  ./run.sh --hwd-only`, Debug Probe): 6/6 passed.
+  - `mtp-args` 10/10, `mtp-example` 27/27.
+  - `mtp-smp` 71/71, speed-up 1.99x on 2 cores (450 ms on one core, 226 ms
+    on two).
+  - `mtp-stdcpp` 75/75, `smp-stdcpp-test` (local) 75/75, `smp-test4`
+    passed.
+  - The first run failed `mtp-args` with `argc=0`: the Pico 2's `boot.S`
+    calls `main (0, NULL)` and skips the kernel's `startup ()`, which is
+    what reads the command line. The µTest++ support now links Cortex-M
+    tests with `-Wl,--wrap=main`. A `main ()` entered without arguments
+    reads them from the debugger, so `os_main ()` gets them.
+
+From the previous layout's workspaces, on the same boards and with the same
+test sources (not yet repeated after the re-scaffold):
 
 - **WeAct F411CE** (2026-11-15, WCH-Link):
   - `mtp-args` 7/7, `mtp-example` 24/24, `spi-pipeline` passed,

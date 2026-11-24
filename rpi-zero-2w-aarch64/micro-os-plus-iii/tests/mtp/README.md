@@ -15,7 +15,7 @@ Each board that uses it has a µTest++ block in `../platforms/<platform>/tests/t
 | `MTP_CONSOLE=1` | stdout replaced by a stream to the UART (`putc_uart`) and to semihosting (`SYS_WRITE0`, batched) |
 | `MTP_CONSOLE=2` | a strong `_write ()` to the UART (`uart::write`) and to semihosting (`hw_result::semi_write0`, batched) |
 | `MTP_CONSOLE=3` | hosted: stdout is the host's |
-| `MTP_SEMIHOST_ARGS=1` | Cortex-M: strong `os_startup_initialize_args ()` reads the command line from the debugger |
+| `MTP_SEMIHOST_ARGS=1` | Cortex-M: strong `os_startup_initialize_args ()` reads the command line from the debugger; `__wrap_main` (`-Wl,--wrap=main`) does it for a board whose reset code calls `main (0, NULL)` itself |
 | `MTP_SEMIHOST_ARGS=2` | AArch32/AArch64: `mtp_startup.hpp` reads it before creating the main thread |
 | `MTP_SEMIHOST_ARGS=0` | hosted: the process arguments |
 | `MTP_HAS_SMP_BOOT=1` | `release_cores ()` through the port's test-smp-boot helpers (AArch32/AArch64) |

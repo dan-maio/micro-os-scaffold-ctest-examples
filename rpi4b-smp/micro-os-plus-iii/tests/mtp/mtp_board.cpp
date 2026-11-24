@@ -685,6 +685,24 @@ os_startup_initialize_args (int* p_argc, char*** p_argv)
   *p_argc = argc;
   *p_argv = argv;
 }
+
+// A board whose own reset code calls main (0, NULL) and skips the kernel's
+// startup () (the RP2350's boot.S) never reaches the function above. The
+// µTest++ block links with -Wl,--wrap=main: a main () entered without
+// arguments asks the debugger for them, so os_main () gets them too. With
+// arguments (the kernel's startup ()), it changes nothing.
+extern "C" int
+__real_main (int argc, char* argv[]);
+
+extern "C" int
+__wrap_main (int argc, char* argv[])
+{
+  if (argc <= 0 || argv == nullptr)
+    {
+      mtp_semihosting::args (argc, argv);
+    }
+  return __real_main (argc, argv);
+}
 #endif // MTP_SEMIHOST_ARGS == 1
 
 #if MTP_CONSOLE == 2

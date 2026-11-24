@@ -146,6 +146,11 @@ The speed-up check reported `3.96x on 4 cores` (591 ms on one core,
 `mtp-example`, `mtp-smp`, `mtp-stdcpp` (75 checks), `smp_test4` (75 checks),
 `clock-test`; `mtp-eth-net` skips under QEMU.
 
+On the board (2026-11-24, `./run.sh --hwd-only`): all seven hardware cases
+passed. `mtp-args` 10/10, `mtp-example` 27/27, `mtp-eth-net` 25/25, `mtp-smp`
+78/78 (speed-up 3.85x: 717 ms on one core, 186 ms on four), `mtp-stdcpp`
+75/75, `smp_test4` 75/75, `clock-test`.
+
 ## Add a new SMP check
 
 Add a `suite-<name>.cpp` file with its own static suite:
