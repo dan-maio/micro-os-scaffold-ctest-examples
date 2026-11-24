@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T06:40:43.051Z",
+  "generatedAt": "2026-11-24T12:27:15.533Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
@@ -12,7 +12,7 @@
   "kernel": {
     "dir": "micro-os-plus-iii",
     "version": "7.2.0-pre.1",
-    "commit": "b9887856"
+    "commit": "06d365fe"
   },
   "packages": [
     {

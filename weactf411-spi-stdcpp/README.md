@@ -127,7 +127,7 @@ mutexes or `mtp_board::atomic_add ()` there.
 
 | Repository | Folder | Version | Commit |
 | --- | --- | --- | --- |
-| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `b9887856` |
+| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `06d365fe` |
 | micro-os-plus-iii-cortexm | `cortexm/micro-os-plus-iii-cortexm` | 2.0.0-pre.1 | `a59271c` |
 | micro-os-plus-iii-devices-stm32f4 | `cortexm/micro-os-plus-iii-devices-stm32f4` | 0.1.0-pre.1 | `ea867df` |
 

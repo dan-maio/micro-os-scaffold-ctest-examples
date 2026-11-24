@@ -1,10 +1,11 @@
 # The µTest++ test workspaces
 
-This folder holds one workspace per board. On 2026-11-24 all six were
-re-scaffolded from the restructured source
-(`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, branch
+This folder holds nine workspaces, all scaffolded from the restructured
+source (`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, branch
 `align/smp-upstream`: kernel and harness in `micro-os-plus-iii/`, ports by
-architecture). Each workspace mirrors that source:
+architecture) on 2026-11-24. The first six are the earlier workspaces,
+re-scaffolded; `luckfox-lyra` and the two `*-usb-stdcpp` workspaces were
+added later that day. Each workspace mirrors that source:
 
 ```text
 <workspace>/
@@ -126,9 +127,17 @@ The workspaces:
 
 The hand-made tests are **local tests**. `scripts/local-tests.txt` lists
 them, and `micro-os-plus-iii/tests/platforms/<p>/tests/tests.local.cmake`
-holds their CMake wiring (they link `stateos-stdc++` and µTest++). A
-re-scaffold keeps both and the test folders byte for byte. `./run.sh` runs
-them by default, and `./run.sh list` marks them `L`.
+holds their CMake wiring:
+
+- `smp_test4`, `smp-stdcpp-test` and `spi-stdcpp-test` link `stateos-stdc++`
+  and µTest++;
+- the two `usb-sd-stdcpp` tests link `stateos-stdc++` and the USB device
+  library, and add the SD card and their defines.
+
+A re-scaffold keeps both files and the test folders byte for byte, along
+with any `keep <path>` (the two AArch32 Zero 2 W workspaces keep their
+`bcm2837-aarch32.cfg`). `./run.sh` runs the local tests by default, and
+`./run.sh list` marks them `L`.
 
 ## Board results
 
@@ -170,11 +179,11 @@ A9 (TX) to the WCH-Link's **RX** and A10 to its TX. With TX and RX swapped
 nothing arrives, and USART1's receiver shows noise (RXNE and overrun set)
 while the board's registers are all correct.
 
-JTAG clock on the Zero 2 W AArch32: 10000 kHz, as in the earlier workspace.
-The restructured source sets 15000 kHz in
+JTAG clock on the Zero 2 W AArch32: 10000 kHz, in `rpi-zero-2w-aarch32` and
+`rpi-zero-2w-aarch32-usb-stdcpp`. The restructured source sets 15000 kHz in
 `micro-os-plus-iii/tests/platforms/aarch32-rpi-zero-2w/bcm2837-aarch32.cfg`.
-This workspace's copy says 10000, and its `scripts/local-tests.txt` keeps the
-file (`keep ...`) across re-scaffolds. The scaffolder warns on every run that
+Each of these workspaces says 10000 in its copy of that file, and its
+`scripts/local-tests.txt` keeps the file (`keep ...`) across re-scaffolds. The scaffolder warns on every run that
 source updates of that file are not applied. `UOS_HW_ADAPTER_KHZ=<kHz>`
 overrides the clock for one run.
 

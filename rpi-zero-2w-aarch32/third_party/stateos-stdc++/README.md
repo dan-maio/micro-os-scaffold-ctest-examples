@@ -41,6 +41,10 @@ in.
 - Kernel objects: `os::rtos::mutex`, `mutex_recursive`, `condition_variable`,
   `semaphore_counting`, `thread`, `clock_systick` instead of the StateOS
   `mtx_t`, `cnd_t`, `tsk_t`, `cnt_t` primitives.
+- Every `std::thread` gets the same stack size: 16 KiB on AArch64 (and
+  x86_64), 4 KiB elsewhere, or `STATEOS_STDCPP_THREAD_STACK_BYTES` when the
+  build defines it (set it in the test's defines, for example 16384 for a
+  thread that keeps a FatFs file on its stack).
 - A `std::thread` is an `os::rtos::thread` allocated from the free store; the
   thread's identity is the address of that object, which is also what
   `this_thread::thread()` returns.

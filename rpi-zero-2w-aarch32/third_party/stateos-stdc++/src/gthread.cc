@@ -130,7 +130,12 @@ namespace
 
   // --- Threads ---------------------------------------------------------------
 
-#if defined(__aarch64__) || defined(__x86_64__)
+  // The stack of every std::thread. The defaults fit the package's own tests;
+  // an application whose threads need more (a FatFs file on the stack, a USB
+  // service loop) sets STATEOS_STDCPP_THREAD_STACK_BYTES.
+#if defined(STATEOS_STDCPP_THREAD_STACK_BYTES)
+  constexpr std::size_t thread_stack_bytes = STATEOS_STDCPP_THREAD_STACK_BYTES;
+#elif defined(__aarch64__) || defined(__x86_64__)
   constexpr std::size_t thread_stack_bytes = 16384;
 #else
   constexpr std::size_t thread_stack_bytes = 4096;

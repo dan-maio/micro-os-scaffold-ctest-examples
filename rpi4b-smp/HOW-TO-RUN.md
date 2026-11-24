@@ -31,7 +31,7 @@ The workspace also carries the other starters:
 - `mtp-args` — the semihosting `argc`/`argv` check (`00 - Arguments`, plus
   `00 - Cores` on this SMP board);
 - `mtp-example` — the runtime + basics starter;
-- `mtp-eth-net` — the GENET Ethernet test (hardware only);
+- `mtp-eth-net` — the GENET Ethernet test (on the board; under QEMU it reports SKIP);
 - `mtp-stdcpp` — the generated stdc++ test (`--stdcpp`), the same six suites;
 - `smp_test4` — the StateOS stdc++ package adapted to µOS++ III (below), a
   local test.

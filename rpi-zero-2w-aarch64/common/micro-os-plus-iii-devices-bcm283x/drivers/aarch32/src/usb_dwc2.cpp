@@ -16,6 +16,7 @@
  * between the AArch32 and AArch64 ports.
  */
 #include <cstdint>
+#include <cstring>
 
 #include <cmsis-plus/rtos/os.h>
 
@@ -227,6 +228,16 @@ Ep0Out g_ep0_out = Ep0Out::setup;
 
 // Bulk OUT / IN transfer books
 const std::uint8_t* g_out_buf = nullptr;
+
+// Bulk OUT data is received by DMA into this buffer, then copied to the
+// caller's. The caller's buffer may share its first and last cache lines with
+// other variables (a static or stack buffer at any address): maintaining
+// those lines around a DMA either discards the neighbours' data or, while
+// another core keeps the line live by writing its neighbour, hides the bytes
+// the DMA wrote. Found on the Zero 2 W: a 1 MiB receive buffer ending 48
+// bytes into a line shared with a counter the load threads update lost
+// exactly those 48 bytes on every transfer. Here the buffer owns whole lines.
+alignas (64) std::uint8_t g_out_bounce[(kOutChunkMax + 63u) & ~63u];
 std::uint32_t g_out_len = 0u;
 std::uint32_t g_out_got = 0u;
 volatile bool g_out_done = false;
@@ -1215,7 +1226,7 @@ ep_read (void* buf, std::uint32_t len) noexcept
         {
           chunk = kOutChunkMax;
         }
-      g_out_buf = p + done;
+      g_out_buf = g_out_bounce;
       g_out_len = chunk;
       g_out_got = 0u;
       g_out_done = false;
@@ -1224,6 +1235,7 @@ ep_read (void* buf, std::uint32_t len) noexcept
         {
           service_events_once ();
         }
+      std::memcpy (p + done, g_out_bounce, g_out_got);
       done += g_out_got;
       if (g_out_got < chunk)
         {

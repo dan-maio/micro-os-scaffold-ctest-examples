@@ -111,9 +111,9 @@ TAP report is `micro-os-plus-iii/tests/build/<configuration>/mtp-reports/<ctest 
 
 | Repository | Folder | Version | Commit |
 | --- | --- | --- | --- |
-| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `b9887856` |
+| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `06d365fe` |
 | micro-os-plus-iii-aarch64 | `aarch64/micro-os-plus-iii-aarch64` | 0.1.0-pre.1 | `7141456` |
-| micro-os-plus-iii-devices-bcm283x | `common/micro-os-plus-iii-devices-bcm283x` | 0.1.0-pre.1 | `eb8795f` |
+| micro-os-plus-iii-devices-bcm283x | `common/micro-os-plus-iii-devices-bcm283x` | 0.1.0-pre.1 | `027acb3` |
 | micro-os-plus-iii-devices-storage | `common/micro-os-plus-iii-devices-storage` | 0.1.0-pre.1 | `7c6cd98` |
 
 Build verification when scaffolded:

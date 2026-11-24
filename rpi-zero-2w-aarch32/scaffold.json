@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T06:41:52.972Z",
+  "generatedAt": "2026-11-24T12:28:32.637Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
@@ -12,7 +12,7 @@
   "kernel": {
     "dir": "micro-os-plus-iii",
     "version": "7.2.0-pre.1",
-    "commit": "b9887856"
+    "commit": "06d365fe"
   },
   "packages": [
     {
@@ -25,7 +25,7 @@
       "id": "micro-os-plus-iii-devices-bcm283x",
       "dir": "common/micro-os-plus-iii-devices-bcm283x",
       "version": "0.1.0-pre.1",
-      "commit": "eb8795f"
+      "commit": "027acb3"
     },
     {
       "id": "micro-os-plus-iii-devices-storage",
