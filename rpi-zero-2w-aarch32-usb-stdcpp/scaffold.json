@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T12:47:03.503Z",
+  "generatedAt": "2026-11-26T05:47:24.230Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
     "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
   },
-  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "sourceRoot": "/home/dan/.cache/micro-os-scaffold/24cf47fee501/micro-os-plus-iii-smp2",
   "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/rpi-zero-2w-aarch32-usb-stdcpp",
   "kernel": {
     "dir": "micro-os-plus-iii",
     "version": "7.2.0-pre.1",
-    "commit": "06d365fe"
+    "commit": "be5c50d"
   },
   "packages": [
     {
@@ -25,13 +25,13 @@
       "id": "micro-os-plus-iii-devices-bcm283x",
       "dir": "common/micro-os-plus-iii-devices-bcm283x",
       "version": "0.1.0-pre.1",
-      "commit": "027acb3"
+      "commit": "be5c50d"
     },
     {
       "id": "micro-os-plus-iii-devices-storage",
       "dir": "common/micro-os-plus-iii-devices-storage",
       "version": "0.1.0-pre.1",
-      "commit": "7c6cd98"
+      "commit": "be5c50d"
     }
   ],
   "selection": [
@@ -186,6 +186,8 @@
       "micro-os-plus-iii/tests/platforms/aarch32-rpi-zero-2w/tests/tests.local.cmake"
     ]
   },
+  "sourceUrl": "https://github.com/dan-maio/micro-os-plus-iii-smp2.git",
+  "sourceBranch": null,
   "build": {
     "results": [
       {

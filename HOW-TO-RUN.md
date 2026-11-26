@@ -4,12 +4,17 @@ This repository is on GitHub, `dan-maio/micro-os-scaffold-ctest-examples`,
 with a local bare backup; `WORKING-WITH-REMOTE.md` describes cloning,
 pulling and pushing.
 
-This folder holds nine workspaces, all scaffolded from the restructured
-source (`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, branch
-`align/smp-upstream`: kernel and harness in `micro-os-plus-iii/`, ports by
-architecture) on 2026-11-24. The first six are the earlier workspaces,
+This folder holds nine workspaces, scaffolded from the restructured source
+(kernel and harness in `micro-os-plus-iii/`, ports by architecture) on
+2026-11-24, from the local workspace
+`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github` (branch
+`align/smp-upstream`). The first six are the earlier workspaces,
 re-scaffolded; `luckfox-lyra` and the two `*-usb-stdcpp` workspaces were
-added later that day. Each workspace mirrors that source:
+added later that day. On 2026-11-26 all nine were re-scaffolded from the
+published source, `https://github.com/dan-maio/micro-os-plus-iii-smp2.git`
+(commit `be5c50da`, ports as submodules): the kernel, port and device
+sources came out identical, every build passed, and `scaffold.json` now
+records that URL. Each workspace mirrors that source:
 
 ```text
 <workspace>/
@@ -262,7 +267,7 @@ From the scaffold project, with the command at the end of the workspace's
 ```bash
 cd /home/dan/Work/micro-os-scaffold
 node bin/scaffold.js /home/dan/Work/micro-os-scaffold-ctest-examples \
-  --source /home/dan/Desktop/micro-os-plu-iii-smp-pr-github \
+  --source 'https://github.com/dan-maio/micro-os-plus-iii-smp2.git' \
   --select cortexm-weactf411.mos-test1 \
   --micro-test-plus https://github.com/micro-os-plus/micro-test-plus-xpack.git \
   --micro-test-plus-ref v6.0.0 \
@@ -273,9 +278,7 @@ A re-scaffold keeps the local tests and their `tests.local.cmake`. It does
 not touch the nested workspaces or the hand-written guides (`HOW-TO-RUN.md`,
 `STDCXX.md`, `ARCHITECTURE.md`).
 
-The source above is the local workspace these examples were made from. Its
-published equivalent is `micro-os-plus-iii-smp2`, whose four ports are git
-submodules: pass `--source` a clone made with `git clone --recursive`, or
-the URL `https://github.com/dan-maio/micro-os-plus-iii-smp2.git` (cloned
-with its submodules by `micro-os-scaffold` 6451e708 or later).
-`WORKING-WITH-REMOTE.md` section 6.1 has the commands.
+The source is `micro-os-plus-iii-smp2`, whose four ports are git
+submodules. The URL is cloned with its submodules (by `micro-os-scaffold`
+6451e708 or later); a local clone made with `git clone --recursive` works
+too. `WORKING-WITH-REMOTE.md` section 6.1 has the commands.

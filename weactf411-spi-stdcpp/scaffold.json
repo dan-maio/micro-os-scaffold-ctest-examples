@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-24T12:39:43.007Z",
+  "generatedAt": "2026-11-26T05:49:17.630Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
     "cli": "/home/dan/Work/micro-os-scaffold/bin/scaffold.js"
   },
-  "sourceRoot": "/home/dan/Desktop/micro-os-plu-iii-smp-pr-github",
+  "sourceRoot": "/home/dan/.cache/micro-os-scaffold/24cf47fee501/micro-os-plus-iii-smp2",
   "destination": "/home/dan/Work/micro-os-scaffold-ctest-examples/weactf411-spi-stdcpp",
   "kernel": {
     "dir": "micro-os-plus-iii",
     "version": "7.2.0-pre.1",
-    "commit": "06d365fe"
+    "commit": "be5c50d"
   },
   "packages": [
     {
@@ -25,7 +25,7 @@
       "id": "micro-os-plus-iii-devices-stm32f4",
       "dir": "cortexm/micro-os-plus-iii-devices-stm32f4",
       "version": "0.1.0-pre.1",
-      "commit": "ea867df"
+      "commit": "be5c50d"
     }
   ],
   "selection": [
@@ -165,6 +165,8 @@
       "micro-os-plus-iii/tests/platforms/cortexm-weactf411/tests/tests.local.cmake"
     ]
   },
+  "sourceUrl": "https://github.com/dan-maio/micro-os-plus-iii-smp2.git",
+  "sourceBranch": null,
   "build": {
     "results": [
       {

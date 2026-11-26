@@ -150,13 +150,15 @@ kernel and packages). The root `README.pdf` then needs rendering again
 
 ### 6.1 The source
 
-The workspaces were scaffolded from the local folder
-`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, and their `scaffold.json`
-records it (`sourceRoot`); a re-scaffold without `--source` reads that folder
-again. Its published equivalent is `micro-os-plus-iii-smp2`, which holds the
-four ports (`aarch32/`, `aarch64/`, `cortexm/`, `posix-arch/`) as git
-submodules. On another machine, or to record the public source, give it with
-`--source`, either as a clone made with `--recursive`:
+Since 2026-11-26 the workspaces are scaffolded from the published source,
+`https://github.com/dan-maio/micro-os-plus-iii-smp2.git`, and their
+`scaffold.json` records it (`sourceUrl`; `sourceRoot` is the clone in the
+scaffolder's cache). A re-scaffold without `--source` clones that URL again,
+so it works on any machine. Before that they were made from the local folder
+`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`; the kernel, port and
+device sources were identical. `micro-os-plus-iii-smp2` holds the four ports
+(`aarch32/`, `aarch64/`, `cortexm/`, `posix-arch/`) as git submodules. To
+scaffold from a local copy, give `--source` a clone made with `--recursive`:
 
 ```bash
 git clone --recursive https://github.com/dan-maio/micro-os-plus-iii-smp2.git /home/dan/Work/micro-os-plus-iii-smp2

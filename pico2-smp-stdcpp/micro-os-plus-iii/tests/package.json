@@ -596,8 +596,8 @@
             "xpm install --config {{ configuration.name }}"
           ],
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-posix-arch --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-storage --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-posix-arch",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-storage"
           ]
         }
       },
@@ -608,9 +608,9 @@
             "xpm install --config {{ configuration.name }}"
           ],
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-cortexm --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-rp2xxx --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-stm32f4 --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-cortexm",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-rp2xxx",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-stm32f4"
           ]
         }
       },
@@ -781,10 +781,10 @@
             "xpm install --config {{ configuration.name }}"
           ],
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-aarch32 --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-storage --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-bcm283x --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-rk3506 --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-aarch32",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-storage",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-bcm283x",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-rk3506"
           ]
         }
       },
@@ -813,9 +813,9 @@
             "xpm install --config {{ configuration.name }}"
           ],
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-aarch64 --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-storage --config {{ configuration.name }}",
-            "xpm link @micro-os-plus/micro-os-plus-iii-devices-bcm283x --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-aarch64",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-storage",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-devices-bcm283x"
           ]
         }
       },
@@ -1365,7 +1365,7 @@
           "test": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "test-hwd": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-cortexm --config {{ configuration.name }}",
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-cortexm",
             "xpm link @xpack-3rd-party/raspberrypi-pico-sdk --config {{ configuration.name }}"
           ]
         }
@@ -1669,7 +1669,7 @@
         },
         "actions": {
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-cortexm @xpack-segger/rtt @xpack-segger/system-view --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-cortexm", "xpm link @xpack-segger/rtt @xpack-segger/system-view --config {{ configuration.name }}"
           ],
           "test": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "test-hwd": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd"
@@ -1715,7 +1715,7 @@
           "test": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "test-hwd": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-cortexm --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-cortexm"
           ]
         }
       },
@@ -1747,7 +1747,7 @@
           "test": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "test-hwd": "cd {{ properties.buildFolderRelativePath }} && ctest -V -L hwd",
           "link-deps": [
-            "xpm link @micro-os-plus/micro-os-plus-iii-cortexm --config {{ configuration.name }}"
+            "sh scripts/link-local.sh {{ configuration.name }} micro-os-plus-iii-cortexm"
           ]
         }
       },
