@@ -12,7 +12,7 @@ commands are written out.*
 |---|---|---|
 | `micro-os-scaffold-ctest-examples` (this one): nine test workspaces | `dan-maio/micro-os-scaffold-ctest-examples` | `/home/dan/Downloads/GIT/micro-os-scaffold-ctest-examples.git` |
 | `micro-os-scaffold`: the scaffolder that made them | `dan-maio/micro-os-scaffold` | `/home/dan/Downloads/GIT/micro-os-scaffold.git` |
-| `micro-os-plus-iii-smp2`: the µOS++ III SMP source they were made from (one repository) | `dan-maio/micro-os-plus-iii-smp2` | none (see its `WORKING-WITH-REMOTE.md`) |
+| `micro-os-plus-iii-smp2`: the µOS++ III SMP source (one repository; the four ports are git submodules) | `dan-maio/micro-os-plus-iii-smp2` | none (see its `WORKING-WITH-REMOTE.md`) |
 
 All three are public on GitHub, branch `main`. The working copy is
 `/home/dan/Work/micro-os-scaffold-ctest-examples`. `HOW-TO-RUN.md` describes
@@ -148,6 +148,36 @@ in the workspace's `scaffold.json`. It keeps the local tests and the
 kernel and packages). The root `README.pdf` then needs rendering again
 (section 5.2).
 
+### 6.1 The source
+
+The workspaces were scaffolded from the local folder
+`/home/dan/Desktop/micro-os-plu-iii-smp-pr-github`, and their `scaffold.json`
+records it (`sourceRoot`); a re-scaffold without `--source` reads that folder
+again. Its published equivalent is `micro-os-plus-iii-smp2`, which holds the
+four ports (`aarch32/`, `aarch64/`, `cortexm/`, `posix-arch/`) as git
+submodules. On another machine, or to record the public source, give it with
+`--source`, either as a clone made with `--recursive`:
+
+```bash
+git clone --recursive https://github.com/dan-maio/micro-os-plus-iii-smp2.git /home/dan/Work/micro-os-plus-iii-smp2
+node bin/scaffold.js /home/dan/Work/micro-os-scaffold-ctest-examples/rpi4b-smp \
+  --source /home/dan/Work/micro-os-plus-iii-smp2 --yes
+```
+
+or as the URL, which the scaffolder clones, submodules included, into its
+cache (`~/.cache/micro-os-scaffold/`):
+
+```bash
+node bin/scaffold.js /home/dan/Work/micro-os-scaffold-ctest-examples/rpi4b-smp \
+  --source https://github.com/dan-maio/micro-os-plus-iii-smp2.git --yes
+```
+
+The scaffolder refuses a local source whose submodule folders are empty (a
+clone made without `--recursive`) and prints the fix:
+`git -C <source> submodule update --init --recursive`. This needs
+`micro-os-scaffold` 6451e708 or later; an older one cloned the URL without
+submodules, and the build stopped with "port folder not found".
+
 ---
 
 ## 7. Restore or move to another machine
@@ -193,6 +223,7 @@ git fetch origin && git branch -u origin/main
 | `! [rejected] … (non-fast-forward)` | GitHub has commits you do not | `git pull --ff-only`, or rebase/merge, then push |
 | `git push` goes to the backup | an old clone where `origin` is still the backup | rename the remotes (section 7) |
 | a workspace does not build on another machine | `scripts/env.sh` points at the old machine's tools | re-scaffold it there (section 6) |
+| `submodules not checked out: aarch32/…` when re-scaffolding | the `micro-os-plus-iii-smp2` clone was made without `--recursive` | `git -C <source> submodule update --init --recursive` (section 6.1) |
 | a PDF is older than its Markdown | not rendered again | section 5.2 |
 
 ---

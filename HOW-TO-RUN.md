@@ -272,3 +272,10 @@ node bin/scaffold.js /home/dan/Work/micro-os-scaffold-ctest-examples \
 A re-scaffold keeps the local tests and their `tests.local.cmake`. It does
 not touch the nested workspaces or the hand-written guides (`HOW-TO-RUN.md`,
 `STDCXX.md`, `ARCHITECTURE.md`).
+
+The source above is the local workspace these examples were made from. Its
+published equivalent is `micro-os-plus-iii-smp2`, whose four ports are git
+submodules: pass `--source` a clone made with `git clone --recursive`, or
+the URL `https://github.com/dan-maio/micro-os-plus-iii-smp2.git` (cloned
+with its submodules by `micro-os-scaffold` 6451e708 or later).
+`WORKING-WITH-REMOTE.md` section 6.1 has the commands.
