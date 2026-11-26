@@ -159,6 +159,9 @@ Re-scaffolded workspaces, on the boards (2026-11-24):
   - `mtp-smp` 78/78, speed-up 3.85x on 4 cores (717 ms on one core, 186 ms
     on four).
   - `mtp-stdcpp` 75/75, `smp_test4` (local) 75/75, `clock-test` passed.
+  - Again on 2026-11-26, from the smp2 source (`6284b489`): 7/7 passed at
+    the first run, with the same counts; speed-up 3.86x (718 ms on one
+    core, 186 ms on four).
 - **Pico 2** (`pico2-smp-stdcpp`, `UOS_HW_ADAPTER_SERIAL=E6633861A34C2E38
   ./run.sh --hwd-only`, Debug Probe): 6/6 passed.
   - `mtp-args` 10/10, `mtp-example` 27/27.
