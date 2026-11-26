@@ -190,6 +190,16 @@ Re-scaffolded workspaces, on the boards (2026-11-24):
   - `smp-mat-test` passed, `mtp-args` 10/10, `mtp-example` 27/27.
   - `mtp-smp` 78/78, speed-up 3.84x on 4 cores (561 ms on one core, 146 ms
     on four).
+  - Again on 2026-11-26, from the smp2 source (`6284b489`), JTAG probe on
+    Pico at 4000 kHz: 8/8 passed (the 4 tests and their 4 reset fixtures),
+    with the same counts and the same speed-up (3.84x, 561 ms and 146 ms).
+    Two earlier runs that day failed in `mtp-smp`, before the board was
+    power-cycled: one hung in "try_lock fails while another core holds the
+    lock", one stopped with a fatal exception right after a semihosting
+    write. Neither came back in 11 later runs. The workspace's code is the
+    same as on 2026-11-24 (same functions, same sizes; only the data is
+    0x410 bytes lower, from the shorter build path), and the 2026-11-24
+    build passed `mtp-smp` 5 of 5 on the board the same day.
 
 Every workspace has now passed on its board since the move to the new
 layout. The two `*-usb-stdcpp` workspaces and `luckfox-lyra` have their own
