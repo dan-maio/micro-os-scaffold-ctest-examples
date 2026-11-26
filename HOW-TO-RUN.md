@@ -12,7 +12,8 @@ This folder holds nine workspaces, scaffolded from the restructured source
 re-scaffolded; `luckfox-lyra` and the two `*-usb-stdcpp` workspaces were
 added later that day. On 2026-11-26 all nine were re-scaffolded from the
 published source, `https://github.com/dan-maio/micro-os-plus-iii-smp2.git`
-(commit `be5c50da`, ports as submodules): the kernel, port and device
+(commit `be5c50da`, ports as submodules; again from `6284b489` after that
+day's documentation fixes): the kernel, port and device
 sources came out identical, every build passed, and `scaffold.json` now
 records that URL. Each workspace mirrors that source:
 
