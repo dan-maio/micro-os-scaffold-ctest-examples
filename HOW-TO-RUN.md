@@ -166,6 +166,9 @@ Re-scaffolded workspaces, on the boards (2026-11-24):
     on two).
   - `mtp-stdcpp` 75/75, `smp-stdcpp-test` (local) 75/75, `smp-test4`
     passed.
+  - Again on 2026-11-26, from the smp2 source (`6284b489`): 6/6 passed
+    at the first run, with the same counts and the same speed-up (1.99x,
+    450 ms and 226 ms).
   - The first run failed `mtp-args` with `argc=0`: the Pico 2's `boot.S`
     calls `main (0, NULL)` and skips the kernel's `startup ()`, which is
     what reads the command line. The µTest++ support now links Cortex-M
