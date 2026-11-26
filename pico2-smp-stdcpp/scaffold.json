@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "layout": "v2",
-  "generatedAt": "2026-11-26T05:45:40.518Z",
+  "generatedAt": "2026-11-26T06:27:54.462Z",
   "generator": {
     "name": "micro-os-scaffold",
     "version": "1.0.0",
@@ -12,7 +12,7 @@
   "kernel": {
     "dir": "micro-os-plus-iii",
     "version": "7.2.0-pre.1",
-    "commit": "be5c50d"
+    "commit": "6284b48"
   },
   "packages": [
     {
@@ -25,7 +25,7 @@
       "id": "micro-os-plus-iii-devices-rp2xxx",
       "dir": "cortexm/micro-os-plus-iii-devices-rp2xxx",
       "version": "0.1.0-pre.1",
-      "commit": "be5c50d"
+      "commit": "6284b48"
     }
   ],
   "selection": [

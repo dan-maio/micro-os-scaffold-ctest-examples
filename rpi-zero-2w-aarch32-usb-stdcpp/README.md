@@ -130,10 +130,10 @@ mutexes or `mtp_board::atomic_add ()` there.
 
 | Repository | Folder | Version | Commit |
 | --- | --- | --- | --- |
-| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `be5c50d` |
+| kernel | `micro-os-plus-iii` | 7.2.0-pre.1 | `6284b48` |
 | micro-os-plus-iii-aarch32 | `aarch32/micro-os-plus-iii-aarch32` | 0.1.0-pre.1 | `2eb3719` |
-| micro-os-plus-iii-devices-bcm283x | `common/micro-os-plus-iii-devices-bcm283x` | 0.1.0-pre.1 | `be5c50d` |
-| micro-os-plus-iii-devices-storage | `common/micro-os-plus-iii-devices-storage` | 0.1.0-pre.1 | `be5c50d` |
+| micro-os-plus-iii-devices-bcm283x | `common/micro-os-plus-iii-devices-bcm283x` | 0.1.0-pre.1 | `6284b48` |
+| micro-os-plus-iii-devices-storage | `common/micro-os-plus-iii-devices-storage` | 0.1.0-pre.1 | `6284b48` |
 
 Build verification when scaffolded:
 
